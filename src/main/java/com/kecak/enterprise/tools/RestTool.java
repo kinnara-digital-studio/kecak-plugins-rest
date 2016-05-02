@@ -23,6 +23,8 @@ import org.joget.plugin.base.DefaultApplicationPlugin;
 import org.joget.workflow.model.WorkflowAssignment;
 import org.joget.workflow.model.service.WorkflowManager;
 import org.springframework.context.ApplicationContext;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -116,36 +118,40 @@ public class RestTool extends DefaultApplicationPlugin{
 			
 			if(!statusCodeworkflowVariable.isEmpty())
 				workflowManager.processVariable(wfAssignment.getProcessId(), statusCodeworkflowVariable, String.valueOf(response.getStatusLine().getStatusCode()));
+		
 			
-			JsonParser parser = new JsonParser();
-			JsonElement completeElement = null;
-			try {
-				completeElement = parser.parse(br);
-			} catch (JsonSyntaxException ex) {
-				// do nothing
-			}
-			
-			Object[] responseBody = (Object[])getProperty("responseBody");
-			for(Object rowResponseBody : responseBody) {
-				Map<String, String> row = (Map<String, String>)rowResponseBody;
-				String[] responseVariables = row.get("responseValue").split("\\.");
-				JsonElement currentElement = completeElement;
-				for(String responseVariable : responseVariables) {
-					if(currentElement == null)
-						break;
+			if(responseContentType.contains("application/json")) {
+				JsonParser parser = new JsonParser();
+				JsonElement completeElement = null;
+				try {
+					completeElement = parser.parse(br);
+				} catch (JsonSyntaxException ex) {
+					// do nothing
+				}
 				
-					if(responseContentType.contains("application/json"))
+				Object[] responseBody = (Object[])getProperty("responseBody");
+				for(Object rowResponseBody : responseBody) {
+					Map<String, String> row = (Map<String, String>)rowResponseBody;
+					String[] responseVariables = row.get("responseValue").split("\\.");
+					JsonElement currentElement = completeElement;
+					for(String responseVariable : responseVariables) {
+						if(currentElement == null)
+							break;
+					
 						currentElement = getJsonResultVariable(responseVariable, currentElement);
-					else {
-						currentElement = null;
-						System.out.println("URL " + request.getURI().toString());
-						System.out.println("Response Content-Type : " + responseContentType + " not supported" );
 					}
-				}
-				if(currentElement != null && currentElement.isJsonPrimitive()) {
-					workflowManager.processVariable(wfAssignment.getProcessId(), row.get("workflowVariable"), currentElement.getAsString());
-				}
-			}			
+					if(currentElement != null && currentElement.isJsonPrimitive()) {
+						workflowManager.processVariable(wfAssignment.getProcessId(), row.get("workflowVariable"), currentElement.getAsString());
+					}
+				}	
+			} else if(responseContentType.contains("application/xml")) {
+				// TODO
+				System.out.println("URL " + request.getURI().toString());
+				System.out.println("Response Content-Type : " + responseContentType + " not supported" );
+			} else {
+				System.out.println("URL " + request.getURI().toString());
+				System.out.println("Response Content-Type : " + responseContentType + " not supported" );
+			}
 		} catch (ClientProtocolException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
