@@ -1,0 +1,91 @@
+[
+	{
+		title : '@@resttool.editrequest@@',
+		properties : [
+			{
+				name : 'url',
+				label : '@@resttool.apiUrl@@',
+				type : 'textfield',
+				regex_validation : 'https{0,1}://',
+				validation_message : '@@resttool.invalidUrl@@'
+			}, {
+				name : 'method',
+				label : '@@resttool.method@@',
+				type : 'selectbox',
+				options : [
+					{
+						value : 'GET',
+						label : 'GET'	
+					}, {
+						value : 'POST',
+						label : 'POST'	
+					}, {
+						value : 'PUT',
+						label : 'PUT'	
+					}, {
+						value : 'DELETE',
+						label : 'DELETE'	
+					}
+				]
+			},  {
+				name : 'parameters',
+				label : '@@resttool.parameters@@',
+				type : 'grid',
+				columns : [
+            		{key : 'key', label : '@@resttool.key@@'},
+            		{key : 'value', label : '@@resttool.value@@'}
+            	]
+			}, {
+				name : 'headers',
+				label : '@@resttool.headers@@',
+				type : 'grid',
+				columns : [
+            		{key : 'key', label : '@@resttool.key@@'},
+            		{key : 'value', label : '@@resttool.value@@'}
+            	]
+			}, {
+				name : 'contentType',
+				label : '@@resttool.contentType@@',
+				type : 'selectbox',
+				options : [
+					{
+						value : 'application/json',
+						label : 'application/json'
+					}, {
+						value : 'application/xml',
+						label : 'application/xml'
+					}, {
+						value : 'multipart-form-data',
+						label : 'multipart-form-data'
+					}
+				]
+			}, {
+				name : 'body',
+				label : '@@resttool.body@@',
+				type : 'textarea'
+			}
+		]
+	}, {
+		title : '@@resttool.editresponse@@',
+		properties : [
+			{
+				name : 'responseBody',
+				label : '@@resttool.mapresponsetovariable@@',
+				type : 'grid',
+				columns : [
+					{
+						key : 'responseValue',
+						label : '@@resttool.responseValue@@'
+					}, {
+						key : 'workflowVariable',
+						label : '@@resttool.workflowVariable@@'
+					}
+				]
+			}, {
+				name : 'statusCodeworkflowVariable',
+				label : '@@resttool.statusCodeworkflowVariable@@',
+				type : 'textfield'
+			}
+		]
+	}
+]
