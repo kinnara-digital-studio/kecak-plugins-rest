@@ -136,9 +136,6 @@ public class RestTool extends DefaultApplicationPlugin{
 				
 					if(responseContentType.contains("application/json"))
 						currentElement = getJsonResultVariable(responseVariable, currentElement);
-					else if(responseContentType.contains("application/xml"))
-						// TODO
-						currentElement = null;
 					else {
 						currentElement = null;
 						System.out.println("URL " + request.getURI().toString());
