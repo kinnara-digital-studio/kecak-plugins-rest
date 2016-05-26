@@ -1,0 +1,34 @@
+
+[
+    
+    {
+        title   :'@@restOptionBinder.optionBinder@@',
+        properties  :[
+                    {
+                        name    :'url',
+                        label   :'@@restOptionBinder.apiUrl@@',
+                        type    :'textfield',
+                        regex_validation : 'https{0,1}://',
+			validation_message : '@@restOptionBinder.invalidUrl@@'
+                    },
+                    {
+                        name    :'parameters',
+                        label   :'@@restOptionBinder.parameters@@',
+                        type    :'grid',
+                        columns :[
+                            {key : 'key', label : '@@restOptionBinder.key@@'},
+                            {value : 'value', label : '@@restOptionBinder.value@@'}
+                        ]
+                    },
+                    {
+                        name    :'headers',
+                        label   :'@@restOptionBinder.headers@@',
+                        type    :'grid',
+                        columns :[
+                            {key : 'key', label : '@@restOptionBinder.key@@'},
+                            {value : 'value', label : '@@restOptionBinder.value@@'}
+                        ]
+                    }
+                ]
+    }
+]

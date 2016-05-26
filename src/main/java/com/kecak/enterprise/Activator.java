@@ -6,8 +6,6 @@ import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceRegistration;
 
-import com.kecak.enterprise.tools.RestTool;
-
 public class Activator implements BundleActivator {
 
     protected Collection<ServiceRegistration> registrationList;
@@ -17,6 +15,7 @@ public class Activator implements BundleActivator {
 
         //Register plugin here
         registrationList.add(context.registerService(RestTool.class.getName(), new RestTool(), null));
+        registrationList.add(context.registerService(RestOptionBinder.class.getName(), new RestOptionBinder(), null));
     }
 
     public void stop(BundleContext context) {

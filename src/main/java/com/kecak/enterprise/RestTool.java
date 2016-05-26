@@ -1,10 +1,14 @@
-package com.kecak.enterprise.tools;
+package com.kecak.enterprise;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.util.Map;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
@@ -19,12 +23,15 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.joget.apps.app.model.AppDefinition;
 import org.joget.apps.app.service.AppUtil;
+import org.joget.apps.form.model.FormRow;
+import org.joget.apps.form.model.FormRowSet;
 import org.joget.plugin.base.DefaultApplicationPlugin;
 import org.joget.workflow.model.WorkflowAssignment;
 import org.joget.workflow.model.service.WorkflowManager;
 import org.springframework.context.ApplicationContext;
+import org.w3c.dom.Document;
 import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
+import org.xml.sax.SAXException;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -33,9 +40,10 @@ import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
 
 public class RestTool extends DefaultApplicationPlugin{
-
+	private final static String LABEL = "REST Tool";
+	
 	public String getLabel() {
-		return "REST Tool";
+		return LABEL;
 	}
 
 	public String getClassName() {
@@ -52,7 +60,7 @@ public class RestTool extends DefaultApplicationPlugin{
 	}
 
 	public String getName() {
-		return "REST Tool";
+		return LABEL;
 	}
 
 	public String getVersion() {
@@ -60,7 +68,7 @@ public class RestTool extends DefaultApplicationPlugin{
 	}
 
 	public String getDescription() {
-		return "REST Tool";
+		return LABEL;
 	}
 
 	@Override
@@ -76,11 +84,10 @@ public class RestTool extends DefaultApplicationPlugin{
 		String body = AppUtil.processHashVariable(getPropertyString("body"), wfAssignment, null, null);
 		
 		// Parameters
-		Object[] parameters = (Object[]) getProperty("parameters");
-		for(Object rowParameter : parameters) {
-			Map<String, String> row = (Map<String, String>) rowParameter;
+		FormRowSet parameters = (FormRowSet) getProperty("parameters");
+		for(FormRow row : parameters) {
 			// if url already contains parameters, use &	
-			url += String.format("%s%s=%s", url.trim().matches("https{0,1}://.+\\?.+=,*") ? "&" : "?" ,row.get("key"), row.get("value"));
+			url += String.format("%s%s=%s", url.trim().matches("https{0,1}://.+\\?.+=,*") ? "&" : "?" ,row.getProperty("key"), row.getProperty("value"));
 		}
 		
 		HttpClient client = HttpClientBuilder.create().build();
@@ -118,7 +125,6 @@ public class RestTool extends DefaultApplicationPlugin{
 			
 			if(!statusCodeworkflowVariable.isEmpty())
 				workflowManager.processVariable(wfAssignment.getProcessId(), statusCodeworkflowVariable, String.valueOf(response.getStatusLine().getStatusCode()));
-		
 			
 			if(responseContentType.contains("application/json")) {
 				JsonParser parser = new JsonParser();
@@ -144,10 +150,45 @@ public class RestTool extends DefaultApplicationPlugin{
 						workflowManager.processVariable(wfAssignment.getProcessId(), row.get("workflowVariable"), currentElement.getAsString());
 					}
 				}	
-			} else if(responseContentType.contains("application/xml")) {
-				// TODO
+			} else if(responseContentType.contains("application/xml") || responseContentType.contains("text/xml")) {
 				System.out.println("URL " + request.getURI().toString());
 				System.out.println("Response Content-Type : " + responseContentType + " not supported" );
+				
+				try {
+					DocumentBuilder builder = DocumentBuilderFactory.newInstance()
+					        .newDocumentBuilder();
+					
+					// parse document from response input stream
+					Document doc = builder.parse(response.getEntity().getContent());
+					
+					// normalize document
+					doc.getDocumentElement().normalize();
+					
+					// get root node
+					Node root = doc.getDocumentElement();
+					
+					// process response properties
+					Object[] responseBody = (Object[])getProperty("responseBody");
+					for(Object rowBody : responseBody) {
+						Map<String, String> row = (Map<String, String>) rowBody;
+						String xmlVariable = row.get("responseValue");
+						String workflowVariable = row.get("workflowVariable");
+						
+						// TODO : assign xmlVariable to workflowVariable
+					}
+					
+					
+				} catch (ParserConfigurationException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (UnsupportedOperationException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (SAXException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				
 			} else {
 				System.out.println("URL " + request.getURI().toString());
 				System.out.println("Response Content-Type : " + responseContentType + " not supported" );
