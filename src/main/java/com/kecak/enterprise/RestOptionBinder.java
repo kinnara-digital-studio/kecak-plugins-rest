@@ -12,6 +12,10 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
@@ -26,6 +30,11 @@ import org.joget.apps.form.model.FormRowSet;
 import org.joget.workflow.model.WorkflowAssignment;
 import org.joget.workflow.model.service.WorkflowManager;
 import org.springframework.context.ApplicationContext;
+import org.w3c.dom.Document;
+import org.w3c.dom.Node;
+import org.xml.sax.SAXException;
+
+import com.kecak.enterprise.commons.Tracer;
 
 /**
  *
@@ -86,27 +95,67 @@ public class RestOptionBinder extends org.joget.apps.form.model.FormBinder imple
                 url += String.format("%s%s=%s", url.trim().matches("https{0,1}://.+\\?.+=,*") ? "&" : "?" ,row.get("key"), row.get("value"));
             }
             
-            
-            // persiapkan header
             HttpClient client = HttpClientBuilder.create().build();
-            
             HttpRequestBase request = new HttpGet(url);
             
+         // persiapkan header
             Object[] headers = (Object[]) getProperty("headers");
             for(Object rowHeader : headers){
             	Map<String, String> row = (Map<String, String>) rowHeader;
                 request.addHeader(row.get("key"), AppUtil.processHashVariable((String) row.get("value"), wfAssignment, null, null));
             }
+            
             // kirim request ke server
             HttpResponse response = client.execute(request);
+            String responseContentType = response.getEntity().getContentType().getValue();
             
             BufferedReader br = new BufferedReader(new InputStreamReader(response.getEntity().getContent()));
-           
+            
+            StringBuffer sb = new StringBuffer();
             String line;
             while((line = br.readLine()) != null) {
-                // process
-                System.out.println(line);
-            }    
+            	sb.append(line);
+            }
+            
+            System.out.println(sb.toString());
+            
+            if(responseContentType.contains("application/xml") || responseContentType.contains("text/xml")) {
+				try {
+					DocumentBuilder builder = DocumentBuilderFactory.newInstance()
+					        .newDocumentBuilder();
+					
+					// parse document from response input stream
+					Document doc = builder.parse(response.getEntity().getContent());
+					
+					// normalize document
+					doc.getDocumentElement().normalize();
+					
+					// get root node
+					Node rootNode = doc.getDocumentElement();
+										
+					String[] valueVariables = getPropertyString("valuePath").split("\\.");
+					String[] labelVariables = getPropertyString("labelPath").split("\\.");
+					
+					Node currentNode = rootNode;
+					for(String rowVariable : rowVariables) {
+						if(currentNode == null)
+							break;
+						currentNode = Tracer.xmlFindChild(getPropertyString("rowPath"), currentNode);
+					}
+					
+					
+				} catch (ParserConfigurationException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (UnsupportedOperationException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (SAXException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+            }
+            
         } catch (IOException ex) {
             Logger.getLogger(RestOptionBinder.class.getName()).log(Level.SEVERE, null, ex);
         }
