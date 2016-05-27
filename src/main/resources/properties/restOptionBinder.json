@@ -27,16 +27,16 @@
                 value : 'value', label : '@@restOptionBinder.value@@'
             }]
         }, {
-            name : 'rowPath',
-            label : '@@restOptionBinder.rowPath',
+            name : 'recordPath',
+            label : '@@restOptionBinder.recordPath@@',
             type : 'textfield'
         }, {
             name : 'valuePath',
-            label : '@@restOptionBinder.valuePath',
+            label : '@@restOptionBinder.valuePath@@',
             type : 'textfield'
         }, {
             name : 'labelPath',
-            label : '@@restOptionBinder.labelPath',
+            label : '@@restOptionBinder.labelPath@@',
             type : 'textfield'
         }]
     }
