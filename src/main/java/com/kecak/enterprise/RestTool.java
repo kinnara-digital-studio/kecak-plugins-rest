@@ -68,7 +68,7 @@ public class RestTool extends DefaultApplicationPlugin{
 	}
 
 	public String getDescription() {
-		return LABEL;
+		return "Kecak - " + LABEL;
 	}
 
 	@Override

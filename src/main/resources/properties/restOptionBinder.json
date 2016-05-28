@@ -7,6 +7,7 @@
             label   :'@@restOptionBinder.apiUrl@@',
             type    :'textfield',
             regex_validation : 'https{0,1}://',
+            required : 'True',
             validation_message : '@@restOptionBinder.invalidUrl@@'
         }, {
             name    :'parameters',
@@ -33,10 +34,12 @@
         }, {
             name : 'valuePath',
             label : '@@restOptionBinder.valuePath@@',
+            required : 'True',
             type : 'textfield'
         }, {
             name : 'labelPath',
             label : '@@restOptionBinder.labelPath@@',
+            required : 'True',
             type : 'textfield'
         }]
     }

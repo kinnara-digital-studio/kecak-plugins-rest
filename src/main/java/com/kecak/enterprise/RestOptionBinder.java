@@ -9,6 +9,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
@@ -26,9 +27,12 @@ import org.apache.http.impl.client.HttpClientBuilder;
 import org.joget.apps.app.model.AppDefinition;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.form.model.Element;
+import org.joget.apps.form.model.FormBinder;
 import org.joget.apps.form.model.FormData;
+import org.joget.apps.form.model.FormLoadOptionsBinder;
 import org.joget.apps.form.model.FormRow;
 import org.joget.apps.form.model.FormRowSet;
+import org.joget.apps.form.service.FormUtil;
 import org.joget.workflow.model.WorkflowAssignment;
 import org.joget.workflow.model.service.WorkflowManager;
 import org.springframework.context.ApplicationContext;
@@ -36,32 +40,40 @@ import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.google.gson.JsonSyntaxException;
+import com.google.gson.stream.JsonReader;
+
 /**
  *
- * @author mrd
+ * @author aristo
  */
    
 
-public class RestOptionBinder extends org.joget.apps.form.model.FormBinder implements org.joget.apps.form.model.FormLoadOptionsBinder{
-
+public class RestOptionBinder extends FormBinder implements FormLoadOptionsBinder{
+	private String LABEL = "Rest Option Binder";
+	
     public String getName() {
-        return "Rest Tool Option Binder"; //To change body of generated methods, choose Tools | Templates.
+        return LABEL; //To change body of generated methods, choose Tools | Templates.
     }
 
     public String getVersion() {
-        return "1.0.0"; //To change body of generated methods, choose Tools | Templates.
+        return "1.0";
     }
 
     public String getDescription() {
-        return "Rest Tool Option Binder"; //To change body of generated methods, choose Tools | Templates.
+        return "Kecak - " + LABEL;
     }
 
     public String getLabel() {
-        return "Rest Tool Option Binder"; //To change body of generated methods, choose Tools | Templates.
+        return LABEL; //To change body of generated methods, choose Tools | Templates.
     }
 
     public String getClassName() {
-        return getClass().getName(); //To change body of generated methods, choose Tools | Templates.
+        return getClass().getName();
     }
 
     public String getPropertyOptions() {
@@ -104,12 +116,27 @@ public class RestOptionBinder extends org.joget.apps.form.model.FormBinder imple
             HttpResponse response = client.execute(request);
             String responseContentType = response.getEntity().getContentType().getValue();
             
-            if(responseContentType.contains("application/xml") || responseContentType.contains("text/xml")) {
+            // get properties
+			String recordPath = getPropertyString("recordPath");
+			String valuePath = getPropertyString("valuePath");
+			String labelPath = getPropertyString("labelPath");
+			
+			Pattern recordPattern = Pattern.compile(recordPath.replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
+			Pattern valuePattern = Pattern.compile(valuePath.replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
+			Pattern labelPattern = Pattern.compile(labelPath.replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
+			
+            if(responseContentType.contains("application/json")) {
 				try {
-					String recordPath = getPropertyString("recordPath");
-					String valuePath = getPropertyString("valuePath");
-					String labelPath = getPropertyString("labelPath");
-					
+					FormRowSet result = new FormRowSet();
+					JsonParser parser = new JsonParser();
+					JsonElement element = parser.parse(new JsonReader(new InputStreamReader(response.getEntity().getContent())));
+					parseJson("", element, recordPattern, valuePattern, labelPattern, true, result, null);					
+					return result;
+				} catch (JsonSyntaxException ex) {
+					Logger.getLogger(RestOptionBinder.class.getName()).log(Level.SEVERE, null, ex);
+				}
+            } else if(responseContentType.contains("application/xml") || responseContentType.contains("text/xml")) {
+				try {					
 					FormRowSet result = new FormRowSet();
 					SAXParserFactory factory = SAXParserFactory.newInstance();
 					SAXParser saxParser = factory.newSAXParser();
@@ -145,12 +172,50 @@ public class RestOptionBinder extends org.joget.apps.form.model.FormBinder imple
             Logger.getLogger(RestOptionBinder.class.getName()).log(Level.SEVERE, null, ex);
         }
         return null;
-    }   
+    }
+    
+    private void setRow(Matcher matcher, String key, String value, FormRow row) {
+    	if(matcher.find() && row != null && row.getProperty(key) == null) {
+			row.setProperty(key, value);
+    	}
+    }
+    
+    private void parseJson(String path, JsonElement element, Pattern recordPattern, Pattern valuePattern, Pattern labelPattern, boolean isLookingForRecordPattern, FormRowSet rowSet, FormRow row) {    	
+    	Matcher matcher = recordPattern.matcher(path);    	
+    	boolean isRecordPath = matcher.find() && isLookingForRecordPattern && element.isJsonObject();
+    	
+    	if(isRecordPath) {
+    		// start looking for value and label pattern
+    		row = new FormRow();
+    	}
+    	
+    	if(element.isJsonObject()) {
+    		parseJsonObject(path, (JsonObject)element, recordPattern, valuePattern, labelPattern, !isRecordPath && isLookingForRecordPattern, rowSet, row);
+    		if(isRecordPath && row != null && row.getProperty(FormUtil.PROPERTY_VALUE) != null && row.getProperty(FormUtil.PROPERTY_LABEL) != null)
+    			rowSet.add(row);
+    	} else if(element.isJsonArray()) {
+    		parseJsonArray(path, (JsonArray)element, recordPattern, valuePattern, labelPattern, !isRecordPath && isLookingForRecordPattern, rowSet, row);
+    		if(isRecordPath && row != null && row.getProperty(FormUtil.PROPERTY_VALUE) != null && row.getProperty(FormUtil.PROPERTY_LABEL) != null)
+    			rowSet.add(row);
+    	} else if(element.isJsonPrimitive() && !isLookingForRecordPattern) {
+    		setRow(valuePattern.matcher(path), FormUtil.PROPERTY_VALUE, element.getAsString(), row);
+    		setRow(labelPattern.matcher(path), FormUtil.PROPERTY_LABEL, element.getAsString(), row);
+    	}
+    }
+    
+    private void parseJsonObject(String path, JsonObject json, Pattern recordPattern, Pattern valuePattern, Pattern labelPattern, boolean isLookingForRecordPattern, FormRowSet rowSet, FormRow row) {
+		for(Map.Entry<String, JsonElement> entry : json.entrySet()) {
+			parseJson(path + "." + entry.getKey(), entry.getValue(), recordPattern, valuePattern, labelPattern, isLookingForRecordPattern, rowSet, row);
+		}
+    }
+    
+    private void parseJsonArray(String path, JsonArray json, Pattern recordPattern, Pattern valuePattern, Pattern labelPattern, boolean isLookingForRecordPattern, FormRowSet rowSet, FormRow row) {    	
+    	for(int i = 0, size = json.size(); i < size; i++) {
+			parseJson(path, json.get(i), recordPattern, valuePattern, labelPattern, isLookingForRecordPattern, rowSet, row);
+		}
+    }
      
     private static class XmlSaxHandler extends DefaultHandler {
-    	private final static String VALUE_KEY = "value";
-    	private final static String LABEL_KEY = "label";
-    	
     	private String currentPath = "";
     	private FormRowSet rowSet;
     	private FormRow row;
@@ -175,7 +240,7 @@ public class RestOptionBinder extends org.joget.apps.form.model.FormBinder imple
     	@Override
     	public void startElement(String uri, String localName, String qName, Attributes attributes)
     			throws SAXException {
-    		currentPath += (currentPath.isEmpty() ? "" : ".") + qName;
+    		currentPath += "." + qName;
     		Matcher m = recordPattern.matcher(currentPath);
     		if(m.find()) {
     			row = new FormRow();
@@ -188,10 +253,10 @@ public class RestOptionBinder extends org.joget.apps.form.model.FormBinder imple
 			if(row != null) {
 				Matcher valueMatcher = valuePattern.matcher(currentPath);
 				Matcher labelMatcher = labelPattern.matcher(currentPath);
-				if(valueMatcher.find()) {
-					row.setProperty(VALUE_KEY, content);
-				} else if(labelMatcher.find()) {
-					row.setProperty(LABEL_KEY, content);
+				if(valueMatcher.find() && row.getProperty(FormUtil.PROPERTY_VALUE) == null) {
+					row.setProperty(FormUtil.PROPERTY_VALUE, content);
+				} else if(labelMatcher.find() && row.getProperty(FormUtil.PROPERTY_LABEL) == null) {
+					row.setProperty(FormUtil.PROPERTY_LABEL, content);
 				}
 			}
     	}
@@ -200,7 +265,7 @@ public class RestOptionBinder extends org.joget.apps.form.model.FormBinder imple
     	public void endElement(String uri, String localName, String qName) throws SAXException {
     		Matcher m = recordPattern.matcher(currentPath);
     		if(m.find() && row != null) {
-    			if(row.getProperty(VALUE_KEY) != null && row.getProperty(LABEL_KEY) != null ) {
+    			if(row.getProperty(FormUtil.PROPERTY_VALUE) != null && row.getProperty(FormUtil.PROPERTY_LABEL) != null ) {
     				rowSet.add(row);
     			}
     			row = null;
