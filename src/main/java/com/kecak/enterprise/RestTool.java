@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -23,8 +25,6 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.joget.apps.app.model.AppDefinition;
 import org.joget.apps.app.service.AppUtil;
-import org.joget.apps.form.model.FormRow;
-import org.joget.apps.form.model.FormRowSet;
 import org.joget.plugin.base.DefaultApplicationPlugin;
 import org.joget.workflow.model.WorkflowAssignment;
 import org.joget.workflow.model.service.WorkflowManager;
@@ -77,17 +77,24 @@ public class RestTool extends DefaultApplicationPlugin{
 	    WorkflowManager workflowManager = (WorkflowManager)appContext.getBean("workflowManager");
 		WorkflowAssignment wfAssignment = (WorkflowAssignment) properties.get("workflowAssignment");
 		
-		String url = AppUtil.processHashVariable(getPropertyString("url"), wfAssignment, null, null);
+		String url = AppUtil.processHashVariable(getPropertyString("url"), wfAssignment, null, null).replaceAll("#", ":");
 		String method = getPropertyString("method");
 		String statusCodeworkflowVariable = getPropertyString("statusCodeworkflowVariable");
 		String contentType = getPropertyString("contentType");
 		String body = AppUtil.processHashVariable(getPropertyString("body"), wfAssignment, null, null);
 		
 		// Parameters
-		FormRowSet parameters = (FormRowSet) getProperty("parameters");
-		for(FormRow row : parameters) {
-			// if url already contains parameters, use &	
-			url += String.format("%s%s=%s", url.trim().matches("https{0,1}://.+\\?.+=,*") ? "&" : "?" ,row.getProperty("key"), row.getProperty("value"));
+		Pattern p = Pattern.compile("https{0,1}://.+\\?.+=,*");
+		Object[] parameters = (Object[]) getProperty("parameters");
+		for(Object parameter : parameters) {
+			Map<String, String> row = (Map<String, String>)parameter;
+			
+			// inflate hash variables
+			String value = AppUtil.processHashVariable(row.get("value"), wfAssignment, null, null);
+			
+			// if url already contains parameters, use &
+			Matcher m = p.matcher(url.trim());
+			url += String.format("%s%s=%s", m.find() ? "&" : "?" ,row.get("key"), value);
 		}
 		
 		HttpClient client = HttpClientBuilder.create().build();

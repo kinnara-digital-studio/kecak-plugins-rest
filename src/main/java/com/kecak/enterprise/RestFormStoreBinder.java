@@ -6,8 +6,7 @@ import org.joget.apps.form.model.FormData;
 import org.joget.apps.form.model.FormRowSet;
 import org.joget.apps.form.model.FormStoreElementBinder;
 
-public class RestStoreBinder extends FormBinder implements FormStoreElementBinder{
-
+public class RestFormStoreBinder extends FormBinder implements FormStoreElementBinder{
 	private final static String LABEL = "REST Store Binder";
 	
 	public String getLabel() {
@@ -19,7 +18,6 @@ public class RestStoreBinder extends FormBinder implements FormStoreElementBinde
 	}
 
 	public String getPropertyOptions() {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
