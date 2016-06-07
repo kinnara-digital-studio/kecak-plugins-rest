@@ -4,7 +4,9 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.util.Map;
+import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -40,6 +42,8 @@ import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
 
 public class RestTool extends DefaultApplicationPlugin{
+	private static final Logger logger = Logger
+			.getLogger(RestTool.class.getName());
 	private final static String LABEL = "REST Tool";
 	
 	public String getLabel() {
@@ -94,7 +98,11 @@ public class RestTool extends DefaultApplicationPlugin{
 			
 			// if url already contains parameters, use &
 			Matcher m = p.matcher(url.trim());
-			url += String.format("%s%s=%s", m.find() ? "&" : "?" ,row.get("key"), value);
+			try {
+				url += String.format("%s%s=%s", m.find() ? "&" : "?" ,row.get("key"), URLEncoder.encode(value, "UTF-8"));
+			} catch (UnsupportedEncodingException e) {
+				e.printStackTrace();
+			}
 		}
 		
 		HttpClient client = HttpClientBuilder.create().build();
@@ -126,6 +134,8 @@ public class RestTool extends DefaultApplicationPlugin{
 		
 		try {
 			HttpResponse response = client.execute(request);
+			logger.info("####Sending " + method + " request to : " + url);
+			
 			String responseContentType = response.getEntity().getContentType().getValue();
 			
 			BufferedReader br = new BufferedReader(new InputStreamReader(response.getEntity().getContent()));
@@ -140,6 +150,7 @@ public class RestTool extends DefaultApplicationPlugin{
 					completeElement = parser.parse(br);
 				} catch (JsonSyntaxException ex) {
 					// do nothing
+					logger.info(ex.getMessage());
 				}
 				
 				Object[] responseBody = (Object[])getProperty("responseBody");
