@@ -6,9 +6,7 @@
             name    :'url',
             label   :'@@restOptionBinder.apiUrl@@',
             type    :'textfield',
-            regex_validation : 'https{0,1}://',
-            required : 'True',
-            validation_message : '@@restOptionBinder.invalidUrl@@'
+            required : 'True'
         }, {
             name    :'parameters',
             label   :'@@restOptionBinder.parameters@@',

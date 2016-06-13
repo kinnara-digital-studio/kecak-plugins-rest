@@ -1,4 +1,4 @@
-package com.kecak.enterprise;
+package com.kecak.enterprise.rest;
 
 import org.joget.apps.form.model.Element;
 import org.joget.apps.form.model.FormBinder;

@@ -1,4 +1,4 @@
-package com.kecak.enterprise;
+package com.kecak.enterprise.rest;
 
 import java.util.ArrayList;
 import java.util.Collection;

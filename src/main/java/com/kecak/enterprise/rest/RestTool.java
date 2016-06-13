@@ -1,4 +1,4 @@
-package com.kecak.enterprise;
+package com.kecak.enterprise.rest;
 
 import java.io.BufferedReader;
 import java.io.IOException;

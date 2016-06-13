@@ -6,8 +6,7 @@
 				name : 'url',
 				label : '@@resttool.apiUrl@@',
 				type : 'textfield',
-				regex_validation : 'https{0,1}://',
-				validation_message : '@@resttool.invalidUrl@@'
+				required : 'True'
 			}, {
 				name : 'method',
 				label : '@@resttool.method@@',
