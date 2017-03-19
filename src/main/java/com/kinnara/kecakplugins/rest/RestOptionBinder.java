@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.kecak.enterprise.rest;
+package com.kinnara.kecakplugins.rest;
 
 import java.io.BufferedReader;
 import java.io.IOException;

@@ -1,4 +1,4 @@
-package com.kecak.enterprise.rest;
+package com.kinnara.kecakplugins.rest;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -69,7 +69,7 @@ public class RestTool extends DefaultApplicationPlugin{
 	}
 
 	public String getVersion() {
-		return "1.0";
+		return "1.1.1";
 	}
 
 	public String getDescription() {

@@ -1,4 +1,4 @@
-package com.kecak.enterprise.rest;
+package com.kinnara.kecakplugins.rest;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;

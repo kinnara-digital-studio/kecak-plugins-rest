@@ -1,4 +1,4 @@
-package com.kecak.enterprise.rest;
+package com.kinnara.kecakplugins.rest;
 
 import org.joget.apps.datalist.model.DataList;
 import org.joget.apps.datalist.model.DataListActionDefault;
