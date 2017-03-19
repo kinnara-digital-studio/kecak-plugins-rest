@@ -24,6 +24,7 @@ import org.apache.http.impl.client.HttpClientBuilder;
 import org.joget.apps.app.dao.FormDefinitionDao;
 import org.joget.apps.app.model.AppDefinition;
 import org.joget.apps.app.model.FormDefinition;
+import org.joget.apps.app.service.AppService;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.form.model.Form;
 import org.joget.apps.form.model.FormData;
@@ -35,6 +36,7 @@ import org.joget.commons.util.LogUtil;
 import org.joget.plugin.base.DefaultApplicationPlugin;
 import org.joget.workflow.model.WorkflowAssignment;
 import org.joget.workflow.model.service.WorkflowManager;
+import org.joget.workflow.util.WorkflowUtil;
 import org.springframework.context.ApplicationContext;
 
 import com.google.gson.JsonArray;
@@ -188,8 +190,10 @@ public class RestTool extends DefaultApplicationPlugin{
 								fieldPattern.put(mapping.get("formField").toString(), pattern);
 							}
 							
+							AppService appService = (AppService)appContext.getBean("appService");
 							FormRowSet result = new FormRowSet();
-							parseJson("", completeElement, recordPattern, fieldPattern, true, result, null);
+							String primaryKey = appService.getOriginProcessId(wfAssignment.getProcessId());
+							parseJson("", completeElement, recordPattern, fieldPattern, true, result, null, getPropertyString("foreignKey"), primaryKey);
 							
 							for(FormRow row : result) {
 								System.out.println("------");
@@ -221,7 +225,7 @@ public class RestTool extends DefaultApplicationPlugin{
 		return null;
 	}
 	
-	private void parseJson(String path, JsonElement element, Pattern recordPattern, Map<String, Pattern> fieldPattern, boolean isLookingForRecordPattern, FormRowSet rowSet, FormRow row) {    	
+	private void parseJson(String path, JsonElement element, Pattern recordPattern, Map<String, Pattern> fieldPattern, boolean isLookingForRecordPattern, FormRowSet rowSet, FormRow row, String foreignKeyField, String primaryKey) {    	
     	Matcher matcher = recordPattern.matcher(path);    	
     	boolean isRecordPath = matcher.find() && isLookingForRecordPattern && element.isJsonObject();
     	
@@ -231,13 +235,19 @@ public class RestTool extends DefaultApplicationPlugin{
     	}
     	
     	if(element.isJsonObject()) {
-    		parseJsonObject(path, (JsonObject)element, recordPattern, fieldPattern, !isRecordPath && isLookingForRecordPattern, rowSet, row);
-    		if(isRecordPath && row != null)
+    		parseJsonObject(path, (JsonObject)element, recordPattern, fieldPattern, !isRecordPath && isLookingForRecordPattern, rowSet, row, foreignKeyField, primaryKey);
+    		if(isRecordPath && row != null) {
+    			if(foreignKeyField != null && !foreignKeyField.isEmpty())
+    				row.setProperty(foreignKeyField, primaryKey);
     			rowSet.add(row);
+    		}
     	} else if(element.isJsonArray()) {
-    		parseJsonArray(path, (JsonArray)element, recordPattern, fieldPattern, !isRecordPath && isLookingForRecordPattern, rowSet, row);
-    		if(isRecordPath && row != null)
+    		parseJsonArray(path, (JsonArray)element, recordPattern, fieldPattern, !isRecordPath && isLookingForRecordPattern, rowSet, row, foreignKeyField, primaryKey);
+    		if(isRecordPath && row != null) {
+    			if(foreignKeyField != null && !foreignKeyField.isEmpty())
+    				row.setProperty(foreignKeyField, primaryKey);
     			rowSet.add(row);
+    		}
     	} else if(element.isJsonPrimitive() && !isLookingForRecordPattern) {
     		for(Map.Entry<String, Pattern> entry : fieldPattern.entrySet()) {
     			setRow(entry.getValue().matcher(path), entry.getKey(), element.getAsString(), row);
@@ -251,15 +261,15 @@ public class RestTool extends DefaultApplicationPlugin{
     	}
     }
 	
-	private void parseJsonObject(String path, JsonObject json, Pattern recordPattern, Map<String, Pattern> fieldPattern, boolean isLookingForRecordPattern, FormRowSet rowSet, FormRow row) {
+	private void parseJsonObject(String path, JsonObject json, Pattern recordPattern, Map<String, Pattern> fieldPattern, boolean isLookingForRecordPattern, FormRowSet rowSet, FormRow row, String foreignKeyField, String primaryKey) {
 		for(Map.Entry<String, JsonElement> entry : json.entrySet()) {
-			parseJson(path + "." + entry.getKey(), entry.getValue(), recordPattern, fieldPattern, isLookingForRecordPattern, rowSet, row);
+			parseJson(path + "." + entry.getKey(), entry.getValue(), recordPattern, fieldPattern, isLookingForRecordPattern, rowSet, row, foreignKeyField, primaryKey);
 		}
     }
     
-    private void parseJsonArray(String path, JsonArray json, Pattern recordPattern, Map<String, Pattern> fieldPattern, boolean isLookingForRecordPattern, FormRowSet rowSet, FormRow row) {    	
+    private void parseJsonArray(String path, JsonArray json, Pattern recordPattern, Map<String, Pattern> fieldPattern, boolean isLookingForRecordPattern, FormRowSet rowSet, FormRow row, String foreignKeyField, String primaryKey) {    	
     	for(int i = 0, size = json.size(); i < size; i++) {
-			parseJson(path, json.get(i), recordPattern, fieldPattern, isLookingForRecordPattern, rowSet, row);
+			parseJson(path, json.get(i), recordPattern, fieldPattern, isLookingForRecordPattern, rowSet, row, foreignKeyField, primaryKey);
 		}
     }
 	
