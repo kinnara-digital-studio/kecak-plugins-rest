@@ -105,12 +105,12 @@
             	type : 'grid',
             	columns : [
             		{
-            			key : 'formField',
-            			label : '@@resttool.formField@@',
-            			required : 'true'
-            		}, {
             			key : 'jsonPath',
             			label : '@@resttool.jsonPath@@',
+            			required : 'true'
+            		}, {
+            			key : 'formField',
+            			label : '@@resttool.formField@@',
             			required : 'true'
             		}
             	]
