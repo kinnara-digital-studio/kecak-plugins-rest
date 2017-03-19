@@ -5,14 +5,10 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
@@ -25,25 +21,30 @@ import org.apache.http.client.methods.HttpPut;
 import org.apache.http.client.methods.HttpRequestBase;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.HttpClientBuilder;
+import org.joget.apps.app.dao.FormDefinitionDao;
 import org.joget.apps.app.model.AppDefinition;
+import org.joget.apps.app.model.FormDefinition;
 import org.joget.apps.app.service.AppUtil;
+import org.joget.apps.form.model.Form;
+import org.joget.apps.form.model.FormData;
+import org.joget.apps.form.model.FormRow;
+import org.joget.apps.form.model.FormRowSet;
+import org.joget.apps.form.service.FormService;
+import org.joget.apps.form.service.FormUtil;
+import org.joget.commons.util.LogUtil;
 import org.joget.plugin.base.DefaultApplicationPlugin;
 import org.joget.workflow.model.WorkflowAssignment;
 import org.joget.workflow.model.service.WorkflowManager;
 import org.springframework.context.ApplicationContext;
-import org.w3c.dom.Document;
-import org.w3c.dom.Node;
-import org.xml.sax.SAXException;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
+import com.google.gson.stream.JsonReader;
 
 public class RestTool extends DefaultApplicationPlugin{
-	private static final Logger logger = Logger
-			.getLogger(RestTool.class.getName());
 	private final static String LABEL = "REST Tool";
 	
 	public String getLabel() {
@@ -134,7 +135,7 @@ public class RestTool extends DefaultApplicationPlugin{
 		
 		try {
 			HttpResponse response = client.execute(request);
-			logger.info("####Sending " + method + " request to : " + url);
+			LogUtil.info(getClassName(), "####Sending [" + method + "] request to : [" + url + "]");
 			
 			String responseContentType = response.getEntity().getContentType().getValue();
 			
@@ -150,7 +151,7 @@ public class RestTool extends DefaultApplicationPlugin{
 					completeElement = parser.parse(br);
 				} catch (JsonSyntaxException ex) {
 					// do nothing
-					logger.info(ex.getMessage());
+					LogUtil.error(getClassName(), ex, ex.getMessage());
 				}
 				
 				Object[] responseBody = (Object[])getProperty("responseBody");
@@ -168,48 +169,48 @@ public class RestTool extends DefaultApplicationPlugin{
 						workflowManager.processVariable(wfAssignment.getProcessId(), row.get("workflowVariable"), currentElement.getAsString());
 					}
 				}	
-			} else if(responseContentType.contains("application/xml") || responseContentType.contains("text/xml")) {
-				System.out.println("URL " + request.getURI().toString());
-				System.out.println("Response Content-Type : " + responseContentType + " not supported" );
 				
-				try {
-					DocumentBuilder builder = DocumentBuilderFactory.newInstance()
-					        .newDocumentBuilder();
+				// Form Binding
+				String formDefId = getPropertyString("formDefId");
+				if(formDefId != null && !formDefId.isEmpty()) {
+					Form form = generateForm(formDefId);
 					
-					// parse document from response input stream
-					Document doc = builder.parse(response.getEntity().getContent());
-					
-					// normalize document
-					doc.getDocumentElement().normalize();
-					
-					// get root node
-					Node root = doc.getDocumentElement();
-					
-					// process response properties
-					Object[] responseBody = (Object[])getProperty("responseBody");
-					for(Object rowBody : responseBody) {
-						Map<String, String> row = (Map<String, String>) rowBody;
-						String xmlVariable = row.get("responseValue");
-						String workflowVariable = row.get("workflowVariable");
-						
-						// TODO : assign xmlVariable to workflowVariable
+					if(form != null) {
+						try {
+							String recordPath = getPropertyString("jsonRecordPath");
+							Object[] fieldMapping = (Object[])getProperty("fieldMapping");
+							
+							Pattern recordPattern = Pattern.compile(recordPath.replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
+							Map<String, Pattern> fieldPattern = new HashMap<String, Pattern>();
+							for(Object o : fieldMapping) {
+								Map<String, String> mapping = (Map<String, String>)o;
+								Pattern pattern = Pattern.compile(mapping.get("jsonPath").replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
+								fieldPattern.put(mapping.get("formField").toString(), pattern);
+							}
+							
+							FormRowSet result = new FormRowSet();
+							parseJson("", completeElement, recordPattern, fieldPattern, true, result, null);
+							
+							for(FormRow row : result) {
+								System.out.println("------");
+								for(Map.Entry<Object, Object> entry : row.entrySet()) {
+									System.out.println(entry.getKey().toString() + "->" + entry.getValue().toString());
+								}
+							}
+							
+							// save data to form
+							form.getStoreBinder().store(form, result, new FormData());
+						} catch (JsonSyntaxException ex) {
+							LogUtil.error(getClassName(), ex, ex.getMessage());
+						}
+					} else {
+						LogUtil.warn(getClassName(), "Error generating form [" + formDefId + "]");
 					}
-					
-					
-				} catch (ParserConfigurationException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				} catch (UnsupportedOperationException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				} catch (SAXException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
 				}
 				
 			} else {
-				System.out.println("URL " + request.getURI().toString());
-				System.out.println("Response Content-Type : " + responseContentType + " not supported" );
+				LogUtil.warn(getClassName(), "URL [" + request.getURI().toString()
+						+ "] Response Content-Type : [" + responseContentType + "] not supported");
 			}
 		} catch (ClientProtocolException e) {
 			e.printStackTrace();
@@ -219,6 +220,48 @@ public class RestTool extends DefaultApplicationPlugin{
 		
 		return null;
 	}
+	
+	private void parseJson(String path, JsonElement element, Pattern recordPattern, Map<String, Pattern> fieldPattern, boolean isLookingForRecordPattern, FormRowSet rowSet, FormRow row) {    	
+    	Matcher matcher = recordPattern.matcher(path);    	
+    	boolean isRecordPath = matcher.find() && isLookingForRecordPattern && element.isJsonObject();
+    	
+    	if(isRecordPath) {
+    		// start looking for value and label pattern
+    		row = new FormRow();
+    	}
+    	
+    	if(element.isJsonObject()) {
+    		parseJsonObject(path, (JsonObject)element, recordPattern, fieldPattern, !isRecordPath && isLookingForRecordPattern, rowSet, row);
+    		if(isRecordPath && row != null)
+    			rowSet.add(row);
+    	} else if(element.isJsonArray()) {
+    		parseJsonArray(path, (JsonArray)element, recordPattern, fieldPattern, !isRecordPath && isLookingForRecordPattern, rowSet, row);
+    		if(isRecordPath && row != null)
+    			rowSet.add(row);
+    	} else if(element.isJsonPrimitive() && !isLookingForRecordPattern) {
+    		for(Map.Entry<String, Pattern> entry : fieldPattern.entrySet()) {
+    			setRow(entry.getValue().matcher(path), entry.getKey(), element.getAsString(), row);
+    		}
+    	}
+    }
+	
+	private void setRow(Matcher matcher, String key, String value, FormRow row) {
+    	if(matcher.find() && row != null && row.getProperty(key) == null) {
+			row.setProperty(key, value);
+    	}
+    }
+	
+	private void parseJsonObject(String path, JsonObject json, Pattern recordPattern, Map<String, Pattern> fieldPattern, boolean isLookingForRecordPattern, FormRowSet rowSet, FormRow row) {
+		for(Map.Entry<String, JsonElement> entry : json.entrySet()) {
+			parseJson(path + "." + entry.getKey(), entry.getValue(), recordPattern, fieldPattern, isLookingForRecordPattern, rowSet, row);
+		}
+    }
+    
+    private void parseJsonArray(String path, JsonArray json, Pattern recordPattern, Map<String, Pattern> fieldPattern, boolean isLookingForRecordPattern, FormRowSet rowSet, FormRow row) {    	
+    	for(int i = 0, size = json.size(); i < size; i++) {
+			parseJson(path, json.get(i), recordPattern, fieldPattern, isLookingForRecordPattern, rowSet, row);
+		}
+    }
 	
 	/**
 	 * 
@@ -261,5 +304,35 @@ public class RestTool extends DefaultApplicationPlugin{
 			}
 		}
 		return null;
+	}
+	
+	private Map<String, Form> formCache = new HashMap<String, Form>();
+	
+	private Form generateForm(String formDefId) {
+		ApplicationContext appContext = AppUtil.getApplicationContext();
+		FormService formService = (FormService) appContext.getBean("formService");
+		FormDefinitionDao formDefinitionDao = (FormDefinitionDao)appContext.getBean("formDefinitionDao");
+		
+    	// check in cache
+    	if(formCache != null && formCache.containsKey(formDefId))
+    		return formCache.get(formDefId);
+    	
+    	// proceed without cache    	
+        Form form = null;
+        AppDefinition appDef = AppUtil.getCurrentAppDefinition();
+        if (appDef != null && formDefId != null && !formDefId.isEmpty()) {
+            FormDefinition formDef = formDefinitionDao.loadById(formDefId, appDef);
+            if (formDef != null) {
+                String json = formDef.getJson();
+                form = (Form)formService.createElementFromJson(json);
+                
+                // put in cache if possible
+                if(formCache != null)
+                	formCache.put(formDefId, form);
+                
+                return form;
+            }
+        }
+        return null;
 	}
 }

@@ -4,7 +4,7 @@
     <groupId>com.kecak.enterprise.rest</groupId>
     <artifactId>kecak-plugins-rest</artifactId>
     <packaging>bundle</packaging>
-    <version>1.0</version>
+    <version>1.0.2</version>
     <name>kecak-plugins-rest</name>
     <build>
         <plugins>

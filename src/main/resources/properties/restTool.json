@@ -86,5 +86,35 @@
 				type : 'textfield'
 			}
 		]
+	}, {
+		title : '@@resttool.formBinding@@',
+		properties : [
+			{
+            	name : 'formDefId',
+            	label : '@@resttool.formDefId@@',
+            	type : 'selectbox',
+            	options_ajax:'[CONTEXT_PATH]/web/json/console/app[APP_PATH]/forms/options',
+            	url : '[CONTEXT_PATH]/web/property/json[APP_PATH]/getPropertyOptions'
+            }, {
+            	name : 'jsonRecordPath',
+            	label : '@@resttool.jsonRecordPath@@',
+            	type : 'textfield'
+            }, {
+            	name : 'fieldMapping',
+            	label : '@@resttool.fieldMapping@@',
+            	type : 'grid',
+            	columns : [
+            		{
+            			key : 'formField',
+            			label : '@@resttool.formField@@',
+            			required : 'true'
+            		}, {
+            			key : 'jsonPath',
+            			label : '@@resttool.jsonPath@@',
+            			required : 'true'
+            		}
+            	]
+            }
+		]
 	}
 ]

@@ -1,39 +1,36 @@
 [
 {
 title : '@@resttool.editrequest@@',
-        properties : [
-        {
-        name : 'url',
-                label : '@@resttool.apiUrl@@',
-                type : 'textfield',
-                required : 'True'
+        properties : [{
+        	name : 'url',
+            label : '@@resttool.apiUrl@@',
+            type : 'textfield',
+            required : 'True'
         }, {
-        name : 'method',
-                label : '@@resttool.method@@',
-                type : 'selectbox',
-                options : [
-                {
-                value : 'GET',
-                        label : 'GET'
-                }, {
-                value : 'POST',
-                        label : 'POST'
-                }, {
-                value : 'PUT',
-                        label : 'PUT'
-                }, {
-                value : 'DELETE',
-                        label : 'DELETE'
-                }
-                ]
+        	name : 'method',
+            label : '@@resttool.method@@',
+            type : 'selectbox',
+            options : [{
+            	value : 'GET',
+                label : 'GET'
+            }, {
+            	value : 'POST',
+                label : 'POST'
+            }, {
+            	value : 'PUT',
+                label : 'PUT'
+            }, {
+            	value : 'DELETE',
+                label : 'DELETE'
+            }]
         }, {
-        name : 'parameters',
-                label : '@@resttool.parameters@@',
-                type : 'grid',
-                columns : [
+        	name : 'parameters',
+            label : '@@resttool.parameters@@',
+            type : 'grid',
+            columns : [
                 {key : 'key', label : '@@resttool.key@@'},
                 {key : 'value', label : '@@resttool.value@@'}
-                ]
+            ]
         }, {
         name : 'headers',
                 label : '@@resttool.headers@@',

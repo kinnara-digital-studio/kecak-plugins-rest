@@ -39,11 +39,6 @@
             label : '@@restOptionBinder.labelPath@@',
             required : 'True',
             type : 'textfield'
-        }, {
-            name : 'groupPath',
-            label : '@@restOptionBinder.groupPath@@',
-            required : 'False',
-            type : 'textfield'
         }]
     }
 ]

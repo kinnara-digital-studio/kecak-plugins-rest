@@ -33,6 +33,7 @@ import org.joget.apps.form.model.FormLoadOptionsBinder;
 import org.joget.apps.form.model.FormRow;
 import org.joget.apps.form.model.FormRowSet;
 import org.joget.apps.form.service.FormUtil;
+import org.joget.commons.util.LogUtil;
 import org.joget.workflow.model.WorkflowAssignment;
 import org.joget.workflow.model.service.WorkflowManager;
 import org.springframework.context.ApplicationContext;
@@ -120,20 +121,22 @@ public class RestOptionBinder extends FormBinder implements FormLoadOptionsBinde
 			String recordPath = getPropertyString("recordPath");
 			String valuePath = getPropertyString("valuePath");
 			String labelPath = getPropertyString("labelPath");
+			String groupPath = getPropertyString("groupPath");
 			
 			Pattern recordPattern = Pattern.compile(recordPath.replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
 			Pattern valuePattern = Pattern.compile(valuePath.replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
 			Pattern labelPattern = Pattern.compile(labelPath.replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
+			Pattern groupPattern = Pattern.compile(groupPath.replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
 			
             if(responseContentType.contains("application/json")) {
 				try {
 					FormRowSet result = new FormRowSet();
 					JsonParser parser = new JsonParser();
 					JsonElement element = parser.parse(new JsonReader(new InputStreamReader(response.getEntity().getContent())));
-					parseJson("", element, recordPattern, valuePattern, labelPattern, true, result, null);					
+					parseJson("", element, recordPattern, valuePattern, labelPattern, groupPattern, true, result, null);					
 					return result;
 				} catch (JsonSyntaxException ex) {
-					Logger.getLogger(RestOptionBinder.class.getName()).log(Level.SEVERE, null, ex);
+					LogUtil.error(getClassName(), ex, ex.getMessage());
 				}
             } else if(responseContentType.contains("application/xml") || responseContentType.contains("text/xml")) {
 				try {					
@@ -180,7 +183,7 @@ public class RestOptionBinder extends FormBinder implements FormLoadOptionsBinde
     	}
     }
     
-    private void parseJson(String path, JsonElement element, Pattern recordPattern, Pattern valuePattern, Pattern labelPattern, boolean isLookingForRecordPattern, FormRowSet rowSet, FormRow row) {    	
+    private void parseJson(String path, JsonElement element, Pattern recordPattern, Pattern valuePattern, Pattern labelPattern, Pattern groupPattern, boolean isLookingForRecordPattern, FormRowSet rowSet, FormRow row) {    	
     	Matcher matcher = recordPattern.matcher(path);    	
     	boolean isRecordPath = matcher.find() && isLookingForRecordPattern && element.isJsonObject();
     	
@@ -190,28 +193,29 @@ public class RestOptionBinder extends FormBinder implements FormLoadOptionsBinde
     	}
     	
     	if(element.isJsonObject()) {
-    		parseJsonObject(path, (JsonObject)element, recordPattern, valuePattern, labelPattern, !isRecordPath && isLookingForRecordPattern, rowSet, row);
+    		parseJsonObject(path, (JsonObject)element, recordPattern, valuePattern, labelPattern, groupPattern, !isRecordPath && isLookingForRecordPattern, rowSet, row);
     		if(isRecordPath && row != null && row.getProperty(FormUtil.PROPERTY_VALUE) != null && row.getProperty(FormUtil.PROPERTY_LABEL) != null)
     			rowSet.add(row);
     	} else if(element.isJsonArray()) {
-    		parseJsonArray(path, (JsonArray)element, recordPattern, valuePattern, labelPattern, !isRecordPath && isLookingForRecordPattern, rowSet, row);
+    		parseJsonArray(path, (JsonArray)element, recordPattern, valuePattern, labelPattern, groupPattern, !isRecordPath && isLookingForRecordPattern, rowSet, row);
     		if(isRecordPath && row != null && row.getProperty(FormUtil.PROPERTY_VALUE) != null && row.getProperty(FormUtil.PROPERTY_LABEL) != null)
     			rowSet.add(row);
     	} else if(element.isJsonPrimitive() && !isLookingForRecordPattern) {
     		setRow(valuePattern.matcher(path), FormUtil.PROPERTY_VALUE, element.getAsString(), row);
     		setRow(labelPattern.matcher(path), FormUtil.PROPERTY_LABEL, element.getAsString(), row);
+    		setRow(groupPattern.matcher(path), FormUtil.PROPERTY_GROUPING, element.getAsString(), row);
     	}
     }
     
-    private void parseJsonObject(String path, JsonObject json, Pattern recordPattern, Pattern valuePattern, Pattern labelPattern, boolean isLookingForRecordPattern, FormRowSet rowSet, FormRow row) {
+    private void parseJsonObject(String path, JsonObject json, Pattern recordPattern, Pattern valuePattern, Pattern labelPattern, Pattern groupPattern, boolean isLookingForRecordPattern, FormRowSet rowSet, FormRow row) {
 		for(Map.Entry<String, JsonElement> entry : json.entrySet()) {
-			parseJson(path + "." + entry.getKey(), entry.getValue(), recordPattern, valuePattern, labelPattern, isLookingForRecordPattern, rowSet, row);
+			parseJson(path + "." + entry.getKey(), entry.getValue(), recordPattern, valuePattern, labelPattern, groupPattern, isLookingForRecordPattern, rowSet, row);
 		}
     }
     
-    private void parseJsonArray(String path, JsonArray json, Pattern recordPattern, Pattern valuePattern, Pattern labelPattern, boolean isLookingForRecordPattern, FormRowSet rowSet, FormRow row) {    	
+    private void parseJsonArray(String path, JsonArray json, Pattern recordPattern, Pattern valuePattern, Pattern labelPattern, Pattern groupPattern, boolean isLookingForRecordPattern, FormRowSet rowSet, FormRow row) {    	
     	for(int i = 0, size = json.size(); i < size; i++) {
-			parseJson(path, json.get(i), recordPattern, valuePattern, labelPattern, isLookingForRecordPattern, rowSet, row);
+			parseJson(path, json.get(i), recordPattern, valuePattern, labelPattern, groupPattern, isLookingForRecordPattern, rowSet, row);
 		}
     }
      
