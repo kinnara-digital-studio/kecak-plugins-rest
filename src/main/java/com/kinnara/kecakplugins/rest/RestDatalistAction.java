@@ -4,6 +4,11 @@ import org.joget.apps.datalist.model.DataList;
 import org.joget.apps.datalist.model.DataListActionDefault;
 import org.joget.apps.datalist.model.DataListActionResult;
 
+/**
+ * 
+ * @author aristo
+ *
+ */
 public class RestDatalistAction extends DataListActionDefault{
 
 	public String getLinkLabel() {

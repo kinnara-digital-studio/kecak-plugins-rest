@@ -46,6 +46,11 @@ import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
 import com.google.gson.stream.JsonReader;
 
+/**
+ * 
+ * @author aristo
+ *
+ */
 public class RestTool extends DefaultApplicationPlugin{
 	private final static String LABEL = "REST Tool";
 	

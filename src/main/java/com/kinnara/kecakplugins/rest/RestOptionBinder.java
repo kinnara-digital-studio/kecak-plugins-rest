@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package com.kinnara.kecakplugins.rest;
 
 import java.io.BufferedReader;
@@ -48,16 +43,15 @@ import com.google.gson.JsonSyntaxException;
 import com.google.gson.stream.JsonReader;
 
 /**
- *
+ * 
  * @author aristo
+ *
  */
-   
-
 public class RestOptionBinder extends FormBinder implements FormLoadOptionsBinder{
 	private String LABEL = "Kecak Rest Option Binder";
 	
     public String getName() {
-        return LABEL; //To change body of generated methods, choose Tools | Templates.
+        return LABEL;
     }
 
     public String getVersion() {
@@ -69,7 +63,7 @@ public class RestOptionBinder extends FormBinder implements FormLoadOptionsBinde
     }
 
     public String getLabel() {
-        return LABEL; //To change body of generated methods, choose Tools | Templates.
+        return LABEL;
     }
 
     public String getClassName() {
@@ -83,7 +77,7 @@ public class RestOptionBinder extends FormBinder implements FormLoadOptionsBinde
         Object[] arguments = new Object[]{appId, appVersion, appId, appVersion, appId, appVersion};
         String json;
         json = AppUtil.readPluginResource((String)this.getClass().getName(), (String)"/properties/restOptionBinder.json", (Object[])arguments, (boolean)true, (String)"message/restOptionBinder");
-        return json; //To change body of generated methods, choose Tools | Templates.
+        return json;
     }
 
     public FormRowSet load(Element elmnt, String string, FormData fd) {

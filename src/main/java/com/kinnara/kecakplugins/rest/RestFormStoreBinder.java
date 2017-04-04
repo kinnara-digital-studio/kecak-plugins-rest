@@ -30,6 +30,11 @@ import org.joget.workflow.model.WorkflowAssignment;
 import org.joget.workflow.model.service.WorkflowManager;
 import org.springframework.context.ApplicationContext;
 
+/**
+ * 
+ * @author aristo
+ *
+ */
 public class RestFormStoreBinder extends FormBinder implements FormStoreElementBinder {
 
     private static final Logger logger = Logger
