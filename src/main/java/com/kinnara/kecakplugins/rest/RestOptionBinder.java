@@ -48,7 +48,7 @@ import com.google.gson.stream.JsonReader;
  *
  */
 public class RestOptionBinder extends FormBinder implements FormLoadOptionsBinder{
-	private String LABEL = "Kecak Rest Option Binder";
+	private String LABEL = "Kecak REST Option Binder";
 	
     public String getName() {
         return LABEL;

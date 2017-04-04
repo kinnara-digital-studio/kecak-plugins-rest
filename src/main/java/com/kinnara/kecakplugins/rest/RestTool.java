@@ -52,7 +52,7 @@ import com.google.gson.stream.JsonReader;
  *
  */
 public class RestTool extends DefaultApplicationPlugin{
-	private final static String LABEL = "REST Tool";
+	private final static String LABEL = "Kecak REST Tool";
 	
 	public String getLabel() {
 		return LABEL;

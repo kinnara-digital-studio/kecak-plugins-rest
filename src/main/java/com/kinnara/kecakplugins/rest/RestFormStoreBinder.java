@@ -36,10 +36,7 @@ import org.springframework.context.ApplicationContext;
  *
  */
 public class RestFormStoreBinder extends FormBinder implements FormStoreElementBinder {
-
-    private static final Logger logger = Logger
-            .getLogger(RestFormStoreBinder.class.getName());
-    private final static String LABEL = "REST Store Binder";
+    private final static String LABEL = "Kecak REST Store Binder";
 
     public String getLabel() {
         return LABEL;
@@ -138,7 +135,7 @@ public class RestFormStoreBinder extends FormBinder implements FormStoreElementB
 
         try {
             HttpResponse response = client.execute(request);
-            logger.info("####Sending " + method + " request to : " + url);
+            LogUtil.info(getClassName(), "Sending [" + method + "] request to : [" + url + "]");
         } catch (ClientProtocolException e) {
             LogUtil.error(RestFormStoreBinder.class.getName(), e, e.getMessage());
         } catch (IOException e) {

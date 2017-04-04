@@ -31,16 +31,16 @@
 				label : '@@resttool.parameters@@',
 				type : 'grid',
 				columns : [
-            		{key : 'key', label : '@@resttool.key@@'},
-            		{key : 'value', label : '@@resttool.value@@'}
+            		{key : 'key', label : '@@resttool.key@@', required : 'true'},
+            		{key : 'value', label : '@@resttool.value@@', required : 'true'}
             	]
 			}, {
 				name : 'headers',
 				label : '@@resttool.headers@@',
 				type : 'grid',
 				columns : [
-            		{key : 'key', label : '@@resttool.key@@'},
-            		{key : 'value', label : '@@resttool.value@@'}
+            		{key : 'key', label : '@@resttool.key@@', required : 'true'},
+            		{key : 'value', label : '@@resttool.value@@', required : 'true'}
             	]
 			}, {
 				name : 'contentType',
@@ -74,10 +74,12 @@
 				columns : [
 					{
 						key : 'responseValue',
-						label : '@@resttool.responseValue@@'
+						label : '@@resttool.responseValue@@',
+						required : 'true'
 					}, {
 						key : 'workflowVariable',
-						label : '@@resttool.workflowVariable@@'
+						label : '@@resttool.workflowVariable@@',
+						required : 'true'
 					}
 				]
 			}, {
@@ -93,6 +95,7 @@
             	name : 'formDefId',
             	label : '@@resttool.formDefId@@',
             	type : 'selectbox',
+            	description : '@@resttool.formDefId.description@@',
             	options_ajax:'[CONTEXT_PATH]/web/json/console/app[APP_PATH]/forms/options',
             	url : '[CONTEXT_PATH]/web/property/json[APP_PATH]/getPropertyOptions'
             }, {
