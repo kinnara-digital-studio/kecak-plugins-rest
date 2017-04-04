@@ -55,7 +55,7 @@ import com.google.gson.stream.JsonReader;
    
 
 public class RestOptionBinder extends FormBinder implements FormLoadOptionsBinder{
-	private String LABEL = "Rest Option Binder";
+	private String LABEL = "Kecak Rest Option Binder";
 	
     public String getName() {
         return LABEL; //To change body of generated methods, choose Tools | Templates.
@@ -66,7 +66,7 @@ public class RestOptionBinder extends FormBinder implements FormLoadOptionsBinde
     }
 
     public String getDescription() {
-        return "Kecak - " + LABEL;
+        return "Artifact ID : kecak-plugins-rest";
     }
 
     public String getLabel() {
