@@ -75,7 +75,7 @@ public class RestTool extends DefaultApplicationPlugin{
 	}
 
 	public String getDescription() {
-		return "Kecak - " + LABEL;
+		return "Artifact ID : kecak-plugins-rest";
 	}
 
 	@Override

@@ -58,11 +58,11 @@ public class RestFormStoreBinder extends FormBinder implements FormStoreElementB
     }
 
     public String getVersion() {
-        return "1.0";
+        return "1.0.0";
     }
 
     public String getDescription() {
-        return "Kecak - " + LABEL;
+    	return "Artifact ID : kecak-plugins-rest";
     }
 
     public FormRowSet store(Element element, FormRowSet rows, FormData formData) {

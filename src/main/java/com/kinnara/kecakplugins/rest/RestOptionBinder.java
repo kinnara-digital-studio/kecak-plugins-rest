@@ -9,7 +9,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.Map;
-import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
@@ -62,7 +61,7 @@ public class RestOptionBinder extends FormBinder implements FormLoadOptionsBinde
     }
 
     public String getVersion() {
-        return "1.0";
+        return "1.0.0";
     }
 
     public String getDescription() {
