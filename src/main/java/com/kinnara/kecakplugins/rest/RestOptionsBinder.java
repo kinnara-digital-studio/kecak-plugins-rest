@@ -47,7 +47,7 @@ import com.google.gson.stream.JsonReader;
  * @author aristo
  *
  */
-public class RestOptionBinder extends FormBinder implements FormLoadOptionsBinder{
+public class RestOptionsBinder extends FormBinder implements FormLoadOptionsBinder{
 	private String LABEL = "Kecak REST Option Binder";
 	
     public String getName() {
@@ -55,11 +55,11 @@ public class RestOptionBinder extends FormBinder implements FormLoadOptionsBinde
     }
 
     public String getVersion() {
-        return "1.0.0";
+        return getClass().getPackage().getImplementationVersion();
     }
 
     public String getDescription() {
-        return "Artifact ID : kecak-plugins-rest";
+    	return "Artifact ID : " + getClass().getPackage().getImplementationTitle();
     }
 
     public String getLabel() {
@@ -165,7 +165,7 @@ public class RestOptionBinder extends FormBinder implements FormLoadOptionsBinde
             }
             
         } catch (IOException ex) {
-            Logger.getLogger(RestOptionBinder.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(RestOptionsBinder.class.getName()).log(Level.SEVERE, null, ex);
         }
         return null;
     }

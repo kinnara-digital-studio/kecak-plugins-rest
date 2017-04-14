@@ -76,11 +76,11 @@ public class RestTool extends DefaultApplicationPlugin{
 	}
 
 	public String getVersion() {
-		return "1.1.1";
+		return getClass().getPackage().getImplementationVersion();
 	}
 
 	public String getDescription() {
-		return "Artifact ID : kecak-plugins-rest";
+		return "Artifact ID : " + getClass().getPackage().getImplementationTitle();
 	}
 
 	@Override

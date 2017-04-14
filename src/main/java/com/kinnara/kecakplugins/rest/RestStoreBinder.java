@@ -35,7 +35,7 @@ import org.springframework.context.ApplicationContext;
  * @author aristo
  *
  */
-public class RestFormStoreBinder extends FormBinder implements FormStoreElementBinder {
+public class RestStoreBinder extends FormBinder implements FormStoreElementBinder {
     private final static String LABEL = "Kecak REST Store Binder";
 
     public String getLabel() {
@@ -60,11 +60,11 @@ public class RestFormStoreBinder extends FormBinder implements FormStoreElementB
     }
 
     public String getVersion() {
-        return "1.0.0";
+    	return getClass().getPackage().getImplementationVersion();
     }
 
     public String getDescription() {
-    	return "Artifact ID : kecak-plugins-rest";
+    	return "Artifact ID : " + getClass().getPackage().getImplementationTitle();
     }
 
     public FormRowSet store(Element element, FormRowSet rows, FormData formData) {
@@ -98,7 +98,7 @@ public class RestFormStoreBinder extends FormBinder implements FormStoreElementB
             try {
                 url += String.format("%s%s=%s", m.find() ? "&" : "?", row.get("key"), URLEncoder.encode(value, "UTF-8"));
             } catch (UnsupportedEncodingException e) {
-                LogUtil.error(RestFormStoreBinder.class.getName(), e, e.getMessage());
+                LogUtil.error(RestStoreBinder.class.getName(), e, e.getMessage());
             }
         }
 
@@ -137,9 +137,9 @@ public class RestFormStoreBinder extends FormBinder implements FormStoreElementB
             HttpResponse response = client.execute(request);
             LogUtil.info(getClassName(), "Sending [" + method + "] request to : [" + url + "]");
         } catch (ClientProtocolException e) {
-            LogUtil.error(RestFormStoreBinder.class.getName(), e, e.getMessage());
+            LogUtil.error(RestStoreBinder.class.getName(), e, e.getMessage());
         } catch (IOException e) {
-            LogUtil.error(RestFormStoreBinder.class.getName(), e, e.getMessage());
+            LogUtil.error(RestStoreBinder.class.getName(), e, e.getMessage());
         }
 
         return rows;
@@ -154,7 +154,7 @@ public class RestFormStoreBinder extends FormBinder implements FormStoreElementB
         try {
             request.setEntity(new StringEntity(entity));
         } catch (UnsupportedEncodingException e) {
-            LogUtil.error(RestFormStoreBinder.class.getName(), e, e.getMessage());
+            LogUtil.error(RestStoreBinder.class.getName(), e, e.getMessage());
         }
     }
 }

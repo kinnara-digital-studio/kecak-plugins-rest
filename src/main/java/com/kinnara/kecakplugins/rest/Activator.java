@@ -15,8 +15,9 @@ public class Activator implements BundleActivator {
 
         //Register plugin here
         registrationList.add(context.registerService(RestTool.class.getName(), new RestTool(), null));
-        registrationList.add(context.registerService(RestOptionBinder.class.getName(), new RestOptionBinder(), null));
-        registrationList.add(context.registerService(RestFormStoreBinder.class.getName(), new RestFormStoreBinder(), null));
+        registrationList.add(context.registerService(RestOptionsBinder.class.getName(), new RestOptionsBinder(), null));
+        registrationList.add(context.registerService(RestLoadBinder.class.getName(), new RestLoadBinder(), null));
+        registrationList.add(context.registerService(RestStoreBinder.class.getName(), new RestStoreBinder(), null));
     }
 
     public void stop(BundleContext context) {
