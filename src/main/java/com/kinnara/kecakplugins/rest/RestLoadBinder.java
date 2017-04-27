@@ -40,6 +40,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
 import com.google.gson.stream.JsonReader;
+import com.kinnara.kecakplugins.rest.commons.DefaultXmlSaxHandler;
 
 public class RestLoadBinder extends FormBinder implements FormLoadElementBinder {
 	private String LABEL = "Kecak REST Load Binder";
@@ -124,7 +125,7 @@ public class RestLoadBinder extends FormBinder implements FormLoadElementBinder 
 					SAXParserFactory factory = SAXParserFactory.newInstance();
 					SAXParser saxParser = factory.newSAXParser();
 					saxParser.parse(response.getEntity().getContent(),
-							new XmlSaxHandler(
+							new LoadBinderSaxHandler(
 									Pattern.compile(recordPath.replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE),
 									result
 							));
@@ -194,12 +195,9 @@ public class RestLoadBinder extends FormBinder implements FormLoadElementBinder 
 		}
     }
      
-    private static class XmlSaxHandler extends DefaultHandler {
-    	private String currentPath = "";
-    	private String currentQName = "";
+    private static class LoadBinderSaxHandler extends DefaultXmlSaxHandler {
     	private FormRowSet rowSet;
     	private FormRow row;
-    	private Pattern recordPattern;
     	
     	/**
     	 * @param recordPattern
@@ -207,42 +205,28 @@ public class RestLoadBinder extends FormBinder implements FormLoadElementBinder 
     	 * @param labelPattern
     	 * @param rowSet : output parameter, the record set being built
     	 */
-    	public XmlSaxHandler(Pattern recordPattern, FormRowSet rowSet) {
-    		this.recordPattern = recordPattern;
+    	public LoadBinderSaxHandler(Pattern recordPattern, FormRowSet rowSet) {
+    		super(recordPattern);
     		this.rowSet = rowSet;
     		row = null;
     	}
-    	
-    	@Override
-    	public void startElement(String uri, String localName, String qName, Attributes attributes)
-    			throws SAXException {
-    		currentPath += "." + qName;
-    		currentQName = qName;
-    		Matcher m = recordPattern.matcher(currentPath);
-    		if(m.find()) {
-    			row = new FormRow();
-    		}
-    	}
-    	
-    	@Override
-    	public void characters(char[] ch, int start, int length) throws SAXException {
-    		String content = new String(ch, start, length).trim();			
-			if(row != null) {
-				if(row.getProperty(currentQName) == null) {
-					row.setProperty(currentQName, content);
-				}
+
+		@Override
+		protected void onOpeningTag(String recordQName) {
+			row = new FormRow();
+		}
+
+		@Override
+		protected void onTagContent(String recordQName, String path, String content) {
+			if(row.getProperty(recordQName) == null) {
+				row.setProperty(recordQName, content);
 			}
-    	}
-    	
-    	@Override
-    	public void endElement(String uri, String localName, String qName) throws SAXException {
-    		Matcher m = recordPattern.matcher(currentPath);
-    		if(m.find() && row != null) {
-    			rowSet.add(row);
-    			row = null;
-    		}
-    		currentPath = currentPath.replaceAll("(\\." + qName + "$)|(^" + qName + "$)", "");
-    	}
+		}
+
+		@Override
+		protected void onClosingTag(String recordQName) {
+			rowSet.add(row);
+		}
     }
 
 }

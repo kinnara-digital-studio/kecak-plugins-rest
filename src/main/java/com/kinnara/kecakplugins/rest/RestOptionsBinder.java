@@ -41,6 +41,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
 import com.google.gson.stream.JsonReader;
+import com.kinnara.kecakplugins.rest.commons.DefaultXmlSaxHandler;
 
 /**
  * 
@@ -71,13 +72,7 @@ public class RestOptionsBinder extends FormBinder implements FormLoadOptionsBind
     }
 
     public String getPropertyOptions() {
-        AppDefinition appDef = AppUtil.getCurrentAppDefinition();
-        String appId = appDef.getId();
-        String appVersion = appDef.getVersion().toString();
-        Object[] arguments = new Object[]{appId, appVersion, appId, appVersion, appId, appVersion};
-        String json;
-        json = AppUtil.readPluginResource((String)this.getClass().getName(), (String)"/properties/restOptionBinder.json", (Object[])arguments, (boolean)true, (String)"message/restOptionBinder");
-        return json;
+        return AppUtil.readPluginResource(getClassName(), "/properties/restOptionBinder.json", null, true, "message/restOptionBinder");
     }
 
     public FormRowSet load(Element elmnt, String string, FormData fd) {
@@ -103,7 +98,7 @@ public class RestOptionsBinder extends FormBinder implements FormLoadOptionsBind
             Object[] headers = (Object[]) getProperty("headers");
             for(Object rowHeader : headers){
             	Map<String, String> row = (Map<String, String>) rowHeader;
-                request.addHeader(row.get("key"), AppUtil.processHashVariable((String) row.get("value"), wfAssignment, null, null));
+                request.addHeader(row.get("key"), AppUtil.processHashVariable(row.get("value"), wfAssignment, null, null));
             }
             
             // kirim request ke server
@@ -137,7 +132,7 @@ public class RestOptionsBinder extends FormBinder implements FormLoadOptionsBind
 					SAXParserFactory factory = SAXParserFactory.newInstance();
 					SAXParser saxParser = factory.newSAXParser();
 					saxParser.parse(response.getEntity().getContent(),
-							new XmlSaxHandler(
+							new OptionsBinderSaxHandler(
 									Pattern.compile(recordPath.replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE),
 									Pattern.compile(valuePath.replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE),
 									Pattern.compile(labelPath.replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE),
@@ -211,12 +206,10 @@ public class RestOptionsBinder extends FormBinder implements FormLoadOptionsBind
 			parseJson(path, json.get(i), recordPattern, valuePattern, labelPattern, groupPattern, isLookingForRecordPattern, rowSet, row);
 		}
     }
-     
-    private static class XmlSaxHandler extends DefaultHandler {
-    	private String currentPath = "";
+    
+    private class OptionsBinderSaxHandler extends DefaultXmlSaxHandler {
     	private FormRowSet rowSet;
     	private FormRow row;
-    	private Pattern recordPattern;
     	private Pattern valuePattern;
     	private Pattern labelPattern;
     	
@@ -226,8 +219,8 @@ public class RestOptionsBinder extends FormBinder implements FormLoadOptionsBind
     	 * @param labelPattern
     	 * @param rowSet : output parameter, the record set being built
     	 */
-    	public XmlSaxHandler(Pattern recordPattern, Pattern valuePattern, Pattern labelPattern, FormRowSet rowSet) {
-    		this.recordPattern = recordPattern;
+    	public OptionsBinderSaxHandler(Pattern recordPattern, Pattern valuePattern, Pattern labelPattern, FormRowSet rowSet) {
+    		super(recordPattern);
     		this.valuePattern = valuePattern;
     		this.labelPattern = labelPattern;
     		this.rowSet = rowSet;
@@ -235,39 +228,24 @@ public class RestOptionsBinder extends FormBinder implements FormLoadOptionsBind
     	}
     	
     	@Override
-    	public void startElement(String uri, String localName, String qName, Attributes attributes)
-    			throws SAXException {
-    		currentPath += "." + qName;
-    		Matcher m = recordPattern.matcher(currentPath);
-    		if(m.find()) {
-    			row = new FormRow();
-    		}
+    	protected void onOpeningTag(String recordQname) {
+    		row = new FormRow();    		
     	}
-    	
-    	@Override
-    	public void characters(char[] ch, int start, int length) throws SAXException {
-    		String content = new String(ch, start, length).trim();			
-			if(row != null) {
-				Matcher valueMatcher = valuePattern.matcher(currentPath);
-				Matcher labelMatcher = labelPattern.matcher(currentPath);
-				if(valueMatcher.find() && row.getProperty(FormUtil.PROPERTY_VALUE) == null) {
-					row.setProperty(FormUtil.PROPERTY_VALUE, content);
-				} else if(labelMatcher.find() && row.getProperty(FormUtil.PROPERTY_LABEL) == null) {
-					row.setProperty(FormUtil.PROPERTY_LABEL, content);
-				}
+
+		@Override
+		protected void onTagContent(String recordQname, String path, String content) {
+			Matcher valueMatcher = valuePattern.matcher(path);
+			Matcher labelMatcher = labelPattern.matcher(path);
+			if(valueMatcher.find() && row.getProperty(FormUtil.PROPERTY_VALUE) == null) {
+				row.setProperty(FormUtil.PROPERTY_VALUE, content);
+			} else if(labelMatcher.find() && row.getProperty(FormUtil.PROPERTY_LABEL) == null) {
+				row.setProperty(FormUtil.PROPERTY_LABEL, content);
 			}
-    	}
-    	
-    	@Override
-    	public void endElement(String uri, String localName, String qName) throws SAXException {
-    		Matcher m = recordPattern.matcher(currentPath);
-    		if(m.find() && row != null) {
-    			if(row.getProperty(FormUtil.PROPERTY_VALUE) != null && row.getProperty(FormUtil.PROPERTY_LABEL) != null ) {
-    				rowSet.add(row);
-    			}
-    			row = null;
-    		}
-    		currentPath = currentPath.replaceAll("(\\." + qName + "$)|(^" + qName + "$)", "");
-    	}
+		}
+
+		@Override
+		protected void onClosingTag(String recordQname) {
+			rowSet.add(row);
+		}
     }
 }
