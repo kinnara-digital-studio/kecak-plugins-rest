@@ -85,22 +85,23 @@ public class RestStoreBinder extends FormBinder implements FormStoreElementBinde
         // Parameters
         Pattern p = Pattern.compile("https{0,1}://.+\\?.+=,*");
         Object[] parameters = (Object[]) getProperty("parameters");
-        for (Object parameter : parameters) {
-            Map<String, String> row = (Map<String, String>) parameter;
-
-            // inflate hash variables
-            String value = row.get("value");
-            if(wfAssignment!=null){
-                value = AppUtil.processHashVariable(row.get("value"), wfAssignment, null, null);
-            }
-            // if url already contains parameters, use &
-            Matcher m = p.matcher(url.trim());
-            try {
-                url += String.format("%s%s=%s", m.find() ? "&" : "?", row.get("key"), URLEncoder.encode(value, "UTF-8"));
-            } catch (UnsupportedEncodingException e) {
-                LogUtil.error(RestStoreBinder.class.getName(), e, e.getMessage());
-            }
-        }
+        if(parameters != null)
+	        for (Object parameter : parameters) {
+	            Map<String, String> row = (Map<String, String>) parameter;
+	
+	            // inflate hash variables
+	            String value = row.get("value");
+	            if(wfAssignment!=null){
+	                value = AppUtil.processHashVariable(row.get("value"), wfAssignment, null, null);
+	            }
+	            // if url already contains parameters, use &
+	            Matcher m = p.matcher(url.trim());
+	            try {
+	                url += String.format("%s%s=%s", m.find() ? "&" : "?", row.get("key"), URLEncoder.encode(value, "UTF-8"));
+	            } catch (UnsupportedEncodingException e) {
+	                LogUtil.error(RestStoreBinder.class.getName(), e, e.getMessage());
+	            }
+	        }
 
         HttpClient client = HttpClientBuilder.create().build();
 

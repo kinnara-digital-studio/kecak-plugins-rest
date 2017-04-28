@@ -18,7 +18,6 @@ import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpRequestBase;
 import org.apache.http.impl.client.HttpClientBuilder;
-import org.joget.apps.app.model.AppDefinition;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.form.model.Element;
 import org.joget.apps.form.model.FormBinder;
@@ -31,17 +30,15 @@ import org.joget.commons.util.LogUtil;
 import org.joget.workflow.model.WorkflowAssignment;
 import org.joget.workflow.model.service.WorkflowManager;
 import org.springframework.context.ApplicationContext;
-import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
-import org.xml.sax.helpers.DefaultHandler;
 
-import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
 import com.google.gson.stream.JsonReader;
 import com.kinnara.kecakplugins.rest.commons.DefaultXmlSaxHandler;
+import com.kinnara.kecakplugins.rest.commons.JsonHandler;
+import com.kinnara.kecakplugins.rest.commons.JsonHandler.FieldMatcher;
 
 /**
  * 
@@ -72,7 +69,7 @@ public class RestOptionsBinder extends FormBinder implements FormLoadOptionsBind
     }
 
     public String getPropertyOptions() {
-        return AppUtil.readPluginResource(getClassName(), "/properties/restOptionBinder.json", null, true, "message/restOptionBinder");
+        return AppUtil.readPluginResource(getClassName(), "/properties/RestOptionBinder.json", null, true, "message/RestOptionBinder");
     }
 
     public FormRowSet load(Element elmnt, String string, FormData fd) {
@@ -86,20 +83,22 @@ public class RestOptionsBinder extends FormBinder implements FormLoadOptionsBind
             // persiapkan parameter
             // mengkombine parameter ke url
             Object[] parameters = (Object[]) getProperty("parameters");
-            for(Object rowParameter : parameters){
-            	Map<String, String> row = (Map<String, String>) rowParameter;
-                url += String.format("%s%s=%s", url.trim().matches("https{0,1}://.+\\?.+=,*") ? "&" : "?" ,row.get("key"), row.get("value"));
-            }
+            if(parameters != null)
+	            for(Object rowParameter : parameters){
+	            	Map<String, String> row = (Map<String, String>) rowParameter;
+	                url += String.format("%s%s=%s", url.trim().matches("https{0,1}://.+\\?.+=,*") ? "&" : "?" ,row.get("key"), row.get("value"));
+	            }
             
             HttpClient client = HttpClientBuilder.create().build();
             HttpRequestBase request = new HttpGet(url);
             
             // persiapkan HTTP header
             Object[] headers = (Object[]) getProperty("headers");
-            for(Object rowHeader : headers){
-            	Map<String, String> row = (Map<String, String>) rowHeader;
-                request.addHeader(row.get("key"), AppUtil.processHashVariable(row.get("value"), wfAssignment, null, null));
-            }
+            if(headers != null)
+	            for(Object rowHeader : headers){
+	            	Map<String, String> row = (Map<String, String>) rowHeader;
+	                request.addHeader(row.get("key"), AppUtil.processHashVariable(row.get("value"), wfAssignment, null, null));
+	            }
             
             // kirim request ke server
             HttpResponse response = client.execute(request);
@@ -118,10 +117,15 @@ public class RestOptionsBinder extends FormBinder implements FormLoadOptionsBind
 			
             if(responseContentType.contains("application/json")) {
 				try {
-					FormRowSet result = new FormRowSet();
 					JsonParser parser = new JsonParser();
 					JsonElement element = parser.parse(new JsonReader(new InputStreamReader(response.getEntity().getContent())));
-					parseJson("", element, recordPattern, valuePattern, labelPattern, groupPattern, true, result, null);					
+					JsonHandler handler = new JsonHandler(element, recordPattern);
+					FormRowSet result = handler
+						.addFieldMatcher(FieldMatcher.build(valuePattern, FormUtil.PROPERTY_VALUE))
+						.addFieldMatcher(FieldMatcher.build(labelPattern, FormUtil.PROPERTY_LABEL))
+						.addFieldMatcher(FieldMatcher.build(groupPattern, FormUtil.PROPERTY_GROUPING))
+						.parse();
+											
 					return result;
 				} catch (JsonSyntaxException ex) {
 					LogUtil.error(getClassName(), ex, ex.getMessage());
@@ -163,48 +167,6 @@ public class RestOptionsBinder extends FormBinder implements FormLoadOptionsBind
             Logger.getLogger(RestOptionsBinder.class.getName()).log(Level.SEVERE, null, ex);
         }
         return null;
-    }
-    
-    private void setRow(Matcher matcher, String key, String value, FormRow row) {
-    	if(matcher.find() && row != null && row.getProperty(key) == null) {
-			row.setProperty(key, value);
-    	}
-    }
-    
-    private void parseJson(String path, JsonElement element, Pattern recordPattern, Pattern valuePattern, Pattern labelPattern, Pattern groupPattern, boolean isLookingForRecordPattern, FormRowSet rowSet, FormRow row) {    	
-    	Matcher matcher = recordPattern.matcher(path);    	
-    	boolean isRecordPath = matcher.find() && isLookingForRecordPattern && element.isJsonObject();
-    	
-    	if(isRecordPath) {
-    		// start looking for value and label pattern
-    		row = new FormRow();
-    	}
-    	
-    	if(element.isJsonObject()) {
-    		parseJsonObject(path, (JsonObject)element, recordPattern, valuePattern, labelPattern, groupPattern, !isRecordPath && isLookingForRecordPattern, rowSet, row);
-    		if(isRecordPath && row != null && row.getProperty(FormUtil.PROPERTY_VALUE) != null && row.getProperty(FormUtil.PROPERTY_LABEL) != null)
-    			rowSet.add(row);
-    	} else if(element.isJsonArray()) {
-    		parseJsonArray(path, (JsonArray)element, recordPattern, valuePattern, labelPattern, groupPattern, !isRecordPath && isLookingForRecordPattern, rowSet, row);
-    		if(isRecordPath && row != null && row.getProperty(FormUtil.PROPERTY_VALUE) != null && row.getProperty(FormUtil.PROPERTY_LABEL) != null)
-    			rowSet.add(row);
-    	} else if(element.isJsonPrimitive() && !isLookingForRecordPattern) {
-    		setRow(valuePattern.matcher(path), FormUtil.PROPERTY_VALUE, element.getAsString(), row);
-    		setRow(labelPattern.matcher(path), FormUtil.PROPERTY_LABEL, element.getAsString(), row);
-    		setRow(groupPattern.matcher(path), FormUtil.PROPERTY_GROUPING, element.getAsString(), row);
-    	}
-    }
-    
-    private void parseJsonObject(String path, JsonObject json, Pattern recordPattern, Pattern valuePattern, Pattern labelPattern, Pattern groupPattern, boolean isLookingForRecordPattern, FormRowSet rowSet, FormRow row) {
-		for(Map.Entry<String, JsonElement> entry : json.entrySet()) {
-			parseJson(path + "." + entry.getKey(), entry.getValue(), recordPattern, valuePattern, labelPattern, groupPattern, isLookingForRecordPattern, rowSet, row);
-		}
-    }
-    
-    private void parseJsonArray(String path, JsonArray json, Pattern recordPattern, Pattern valuePattern, Pattern labelPattern, Pattern groupPattern, boolean isLookingForRecordPattern, FormRowSet rowSet, FormRow row) {    	
-    	for(int i = 0, size = json.size(); i < size; i++) {
-			parseJson(path, json.get(i), recordPattern, valuePattern, labelPattern, groupPattern, isLookingForRecordPattern, rowSet, row);
-		}
     }
     
     private class OptionsBinderSaxHandler extends DefaultXmlSaxHandler {

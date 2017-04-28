@@ -29,6 +29,11 @@ import com.google.gson.JsonSyntaxException;
 import com.google.gson.stream.JsonReader;
 import com.kinnara.kecakplugins.rest.commons.JsonHandler;
 
+/**
+ * 
+ * @author aristo
+ *
+ */
 public class RestDatalistBinder extends DataListBinderDefault{
 
 	public DataListColumn[] getColumns() {
