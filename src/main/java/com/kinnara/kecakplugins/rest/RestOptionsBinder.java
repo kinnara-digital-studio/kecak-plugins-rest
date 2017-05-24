@@ -37,8 +37,8 @@ import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
 import com.google.gson.stream.JsonReader;
 import com.kinnara.kecakplugins.rest.commons.DefaultXmlSaxHandler;
+import com.kinnara.kecakplugins.rest.commons.FieldMatcher;
 import com.kinnara.kecakplugins.rest.commons.JsonHandler;
-import com.kinnara.kecakplugins.rest.commons.JsonHandler.FieldMatcher;
 
 /**
  * 

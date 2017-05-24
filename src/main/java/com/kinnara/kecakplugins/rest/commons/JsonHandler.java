@@ -50,19 +50,24 @@ public class JsonHandler {
     	}
     	
     	if(element.isJsonObject()) {
+    		// JSONObject data
     		parseJsonObject(path, (JsonObject)element, recordPattern, !isRecordPath && isLookingForRecordPattern, rowSet, row);
     		if(isRecordPath && row != null)
     			rowSet.add(row);
     	} else if(element.isJsonArray()) {
+    		// JSONArray data
     		parseJsonArray(currentKey, path, (JsonArray)element, recordPattern, !isRecordPath && isLookingForRecordPattern, rowSet, row);
     		if(isRecordPath && row != null)
     			rowSet.add(row);
     	} else if(element.isJsonPrimitive() && !isLookingForRecordPattern) {
+    		// plain data
     		if(fieldMatchers.isEmpty()) {
     			setRow(noPattern.matcher(path), currentKey, element.getAsString(), row);
     		} else {
 	    		for(FieldMatcher item : fieldMatchers) {
-	    			setRow(item.getPattern().matcher(path), item.getField(), element.getAsString(), row);
+	    			if(!item.getPattern().pattern().equals("$")) {
+	    				setRow(item.getPattern().matcher(path), item.getField(), element.getAsString(), row);
+	    			}
 	    		}
     		}
     	}
@@ -84,28 +89,5 @@ public class JsonHandler {
     	if(matcher.find() && row != null && row.getProperty(key) == null) {
 			row.setProperty(key, value);
     	}
-    }    
-    
-    public static class FieldMatcher {
-    	private Pattern pattern;
-    	private String field;
-    	
-    	private FieldMatcher(Pattern pattern, String fieldName) {
-    		this.pattern = pattern;
-    		this.field = fieldName;
-    	}
-    	
-    	public static FieldMatcher build(Pattern pattern, String field) {
-    		return new FieldMatcher(pattern, field);
-    	}
-    	
-    	private Pattern getPattern() {
-    		return pattern;
-    	}
-    	
-    	private String getField() {
-    		return field;
-    	}
     }
-    
 }
