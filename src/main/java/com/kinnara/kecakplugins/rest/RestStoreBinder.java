@@ -36,7 +36,7 @@ import org.springframework.context.ApplicationContext;
  *
  */
 public class RestStoreBinder extends FormBinder implements FormStoreElementBinder {
-    private final static String LABEL = "Kecak REST Store Binder";
+    private final static String LABEL = "REST Store Binder";
 
     public String getLabel() {
         return LABEL;

@@ -91,7 +91,7 @@ public class RestDatalistBinder extends DataListBinderDefault{
 	}
 
 	public String getName() {
-        return "Kecak REST DataList Binder";
+        return "REST DataList Binder";
     }
 
     public String getVersion() {

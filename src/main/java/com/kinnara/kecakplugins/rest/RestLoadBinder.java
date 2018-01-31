@@ -39,7 +39,7 @@ import com.kinnara.kecakplugins.rest.commons.DefaultXmlSaxHandler;
 import com.kinnara.kecakplugins.rest.commons.JsonHandler;
 
 public class RestLoadBinder extends FormBinder implements FormLoadElementBinder {
-	private String LABEL = "Kecak REST Load Binder";
+	private String LABEL = "REST Load Binder";
 	
     public String getName() {
         return LABEL;

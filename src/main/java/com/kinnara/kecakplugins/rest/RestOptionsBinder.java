@@ -46,7 +46,7 @@ import com.kinnara.kecakplugins.rest.commons.JsonHandler;
  *
  */
 public class RestOptionsBinder extends FormBinder implements FormLoadOptionsBinder{
-	private String LABEL = "Kecak REST Option Binder";
+	private String LABEL = "REST Option Binder";
 	
     public String getName() {
         return LABEL;
