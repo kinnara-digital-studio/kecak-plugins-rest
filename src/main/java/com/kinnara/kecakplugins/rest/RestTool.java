@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
@@ -139,92 +140,91 @@ public class RestTool extends DefaultApplicationPlugin{
 		if("POST".equals(method) || "PUT".equals(method)) {
 			setHttpEntity((HttpEntityEnclosingRequestBase) request, body);
 		}
-		
+
 		try {
 			HttpResponse response = client.execute(request);
 			LogUtil.info(getClassName(), "####Sending [" + method + "] request to : [" + url + "]");
-			
+
 			String responseContentType = response.getEntity().getContentType().getValue();
 			
-			BufferedReader br = new BufferedReader(new InputStreamReader(response.getEntity().getContent()));
-			
-			if(!statusCodeworkflowVariable.isEmpty())
-				workflowManager.processVariable(wfAssignment.getProcessId(), statusCodeworkflowVariable, String.valueOf(response.getStatusLine().getStatusCode()));
-			
-			if(responseContentType.contains("application/json")) {
-				JsonParser parser = new JsonParser();
-				JsonElement completeElement = null;
-				try {
-					completeElement = parser.parse(br);
-				} catch (JsonSyntaxException ex) {
-					// do nothing
-					LogUtil.error(getClassName(), ex, ex.getMessage());
-				}
-				
-				Object[] responseBody = (Object[])getProperty("responseBody");
-				for(Object rowResponseBody : responseBody) {
-					Map<String, String> row = (Map<String, String>)rowResponseBody;
-					String[] responseVariables = row.get("responseValue").split("\\.");
-					JsonElement currentElement = completeElement;
-					for(String responseVariable : responseVariables) {
-						if(currentElement == null)
-							break;
-					
-						currentElement = getJsonResultVariable(responseVariable, currentElement);
+			try(BufferedReader br = new BufferedReader(new InputStreamReader(response.getEntity().getContent()))) {
+				if(!statusCodeworkflowVariable.isEmpty())
+					workflowManager.processVariable(wfAssignment.getProcessId(), statusCodeworkflowVariable, String.valueOf(response.getStatusLine().getStatusCode()));
+
+				if(responseContentType.contains("application/json")) {
+					JsonParser parser = new JsonParser();
+					JsonElement completeElement = null;
+					try {
+						completeElement = parser.parse(br);
+					} catch (JsonSyntaxException ex) {
+						// do nothing
+						LogUtil.error(getClassName(), ex, ex.getMessage());
 					}
-					if(currentElement != null && currentElement.isJsonPrimitive()) {
-						workflowManager.processVariable(wfAssignment.getProcessId(), row.get("workflowVariable"), currentElement.getAsString());
-					}
-				}	
-				
-				// Form Binding
-				String formDefId = getPropertyString("formDefId");
-				if(formDefId != null && !formDefId.isEmpty()) {
-					Form form = generateForm(formDefId);
-					
-					if(form != null) {
-						try {
-							String recordPath = getPropertyString("jsonRecordPath");
-							Object[] fieldMapping = (Object[])getProperty("fieldMapping");
-							
-							Pattern recordPattern = Pattern.compile(recordPath.replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
-							Map<String, Pattern> fieldPattern = new HashMap<String, Pattern>();
-							for(Object o : fieldMapping) {
-								Map<String, String> mapping = (Map<String, String>)o;
-								Pattern pattern = Pattern.compile(mapping.get("jsonPath").replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
-								fieldPattern.put(mapping.get("formField").toString(), pattern);
-							}
-							
-							AppService appService = (AppService)appContext.getBean("appService");
-							FormRowSet result = new FormRowSet();
-							String primaryKey = appService.getOriginProcessId(wfAssignment.getProcessId());
-							parseJson("", completeElement, recordPattern, fieldPattern, true, result, null, getPropertyString("foreignKey"), primaryKey);
-							
-							for(FormRow row : result) {
-								System.out.println("------");
-								for(Map.Entry<Object, Object> entry : row.entrySet()) {
-									System.out.println(entry.getKey().toString() + "->" + entry.getValue().toString());
-								}
-							}
-							
-							// save data to form
-							form.getStoreBinder().store(form, result, new FormData());
-						} catch (JsonSyntaxException ex) {
-							LogUtil.error(getClassName(), ex, ex.getMessage());
+
+					Object[] responseBody = (Object[])getProperty("responseBody");
+					for(Object rowResponseBody : responseBody) {
+						Map<String, String> row = (Map<String, String>)rowResponseBody;
+						String[] responseVariables = row.get("responseValue").split("\\.");
+						JsonElement currentElement = completeElement;
+						for(String responseVariable : responseVariables) {
+							if(currentElement == null)
+								break;
+
+							currentElement = getJsonResultVariable(responseVariable, currentElement);
 						}
-					} else {
-						LogUtil.warn(getClassName(), "Error generating form [" + formDefId + "]");
+						if(currentElement != null && currentElement.isJsonPrimitive()) {
+							workflowManager.processVariable(wfAssignment.getProcessId(), row.get("workflowVariable"), currentElement.getAsString());
+						}
 					}
+
+					// Form Binding
+					String formDefId = getPropertyString("formDefId");
+					if(formDefId != null && !formDefId.isEmpty()) {
+						Form form = generateForm(formDefId);
+
+						if(form != null) {
+							try {
+								String recordPath = getPropertyString("jsonRecordPath");
+								Object[] fieldMapping = (Object[])getProperty("fieldMapping");
+
+								Pattern recordPattern = Pattern.compile(recordPath.replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
+								Map<String, Pattern> fieldPattern = new HashMap<String, Pattern>();
+								for(Object o : fieldMapping) {
+									Map<String, String> mapping = (Map<String, String>)o;
+									Pattern pattern = Pattern.compile(mapping.get("jsonPath").replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
+									fieldPattern.put(mapping.get("formField").toString(), pattern);
+								}
+
+								AppService appService = (AppService)appContext.getBean("appService");
+								FormRowSet result = new FormRowSet();
+								String primaryKey = appService.getOriginProcessId(wfAssignment.getProcessId());
+								parseJson("", completeElement, recordPattern, fieldPattern, true, result, null, getPropertyString("foreignKey"), primaryKey);
+
+								for(FormRow row : result) {
+									System.out.println("------");
+									for(Map.Entry<Object, Object> entry : row.entrySet()) {
+										System.out.println(entry.getKey().toString() + "->" + entry.getValue().toString());
+									}
+								}
+
+								// save data to form
+								form.getStoreBinder().store(form, result, new FormData());
+							} catch (JsonSyntaxException ex) {
+								LogUtil.error(getClassName(), ex, ex.getMessage());
+							}
+						} else {
+							LogUtil.warn(getClassName(), "Error generating form [" + formDefId + "]");
+						}
+					}
+
+				} else {
+					LogUtil.warn(getClassName(), "URL [" + request.getURI().toString()
+							+ "] Response Content-Type : [" + responseContentType + "] not supported [" + br.lines().collect(Collectors.joining()) + "]");
+
 				}
-				
-			} else {
-				LogUtil.warn(getClassName(), "URL [" + request.getURI().toString()
-						+ "] Response Content-Type : [" + responseContentType + "] not supported");
 			}
-		} catch (ClientProtocolException e) {
-			e.printStackTrace();
 		} catch (IOException e) {
-			e.printStackTrace();
+			LogUtil.error(getClassName(), e, e.getMessage());
 		}
 		
 		return null;

@@ -1,17 +1,11 @@
 package com.kinnara.kecakplugins.rest;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import java.util.regex.Pattern;
-
-import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.parsers.SAXParser;
-import javax.xml.parsers.SAXParserFactory;
-
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
+import com.google.gson.JsonSyntaxException;
+import com.google.gson.stream.JsonReader;
+import com.kinnara.kecakplugins.rest.commons.DefaultXmlSaxHandler;
+import com.kinnara.kecakplugins.rest.commons.JsonHandler;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
@@ -19,24 +13,24 @@ import org.apache.http.client.methods.HttpRequestBase;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.joget.apps.app.model.AppDefinition;
 import org.joget.apps.app.service.AppUtil;
-import org.joget.apps.form.model.Element;
-import org.joget.apps.form.model.FormBinder;
-import org.joget.apps.form.model.FormData;
-import org.joget.apps.form.model.FormLoadElementBinder;
-import org.joget.apps.form.model.FormRow;
-import org.joget.apps.form.model.FormRowSet;
+import org.joget.apps.form.model.*;
 import org.joget.commons.util.LogUtil;
 import org.joget.workflow.model.WorkflowAssignment;
 import org.joget.workflow.model.service.WorkflowManager;
 import org.springframework.context.ApplicationContext;
 import org.xml.sax.SAXException;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonParser;
-import com.google.gson.JsonSyntaxException;
-import com.google.gson.stream.JsonReader;
-import com.kinnara.kecakplugins.rest.commons.DefaultXmlSaxHandler;
-import com.kinnara.kecakplugins.rest.commons.JsonHandler;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.parsers.SAXParser;
+import javax.xml.parsers.SAXParserFactory;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class RestLoadBinder extends FormBinder implements FormLoadElementBinder {
 	private String LABEL = "REST Load Binder";
@@ -67,7 +61,7 @@ public class RestLoadBinder extends FormBinder implements FormLoadElementBinder 
         String appVersion = appDef.getVersion().toString();
         Object[] arguments = new Object[]{appId, appVersion, appId, appVersion, appId, appVersion};
         String json;
-        json = AppUtil.readPluginResource((String)this.getClass().getName(), (String)"/properties/RestLoadBinder.json", (Object[])arguments, (boolean)true, (String)"message/RestLoadBinder");
+        json = AppUtil.readPluginResource(this.getClass().getName(), "/properties/RestLoadBinder.json", arguments, true, "message/RestLoadBinder");
         return json;
     }
 
@@ -75,7 +69,7 @@ public class RestLoadBinder extends FormBinder implements FormLoadElementBinder 
         try {
             ApplicationContext appContext = AppUtil.getApplicationContext();
             WorkflowManager workflowManager = (WorkflowManager)appContext.getBean("workflowManager");
-            WorkflowAssignment wfAssignment = (WorkflowAssignment) workflowManager.getAssignment(fd.getActivityId());
+            WorkflowAssignment wfAssignment = workflowManager.getAssignment(fd.getActivityId());
             
             String url = AppUtil.processHashVariable(getPropertyString("url").replaceAll(":id", primaryKey), wfAssignment, null, null);
             
@@ -129,24 +123,15 @@ public class RestLoadBinder extends FormBinder implements FormLoadElementBinder 
 							));
 					
 					return result;
-				} catch (UnsupportedOperationException e1) {
+				} catch (UnsupportedOperationException | SAXException | ParserConfigurationException e1) {
 					e1.printStackTrace();
-				} catch (SAXException e1) {
-					e1.printStackTrace();
-				} catch (ParserConfigurationException e) {
-					e.printStackTrace();
 				}
-				
-            } else {
-            	BufferedReader br = new BufferedReader(new InputStreamReader(response.getEntity().getContent()));
-                StringBuffer sb = new StringBuffer();
-                String line;
-                while((line = br.readLine()) != null) {
-                	sb.append(line);
-                }
-                LogUtil.warn(getClassName(), "Response content type [" + responseContentType + "] not supported yet.");
+
+			} else {
+            	try(BufferedReader br = new BufferedReader(new InputStreamReader(response.getEntity().getContent()))) {
+					LogUtil.warn(getClassName(), "Response content type [" + responseContentType + "] not supported yet. ["+br.lines().collect(Collectors.joining())+"]");
+				}
             }
-            
         } catch (IOException ex) {
             Logger.getLogger(RestOptionsBinder.class.getName()).log(Level.SEVERE, null, ex);
         }
@@ -159,8 +144,6 @@ public class RestLoadBinder extends FormBinder implements FormLoadElementBinder 
     	
     	/**
     	 * @param recordPattern
-    	 * @param valuePattern
-    	 * @param labelPattern
     	 * @param rowSet : output parameter, the record set being built
     	 */
     	public LoadBinderSaxHandler(Pattern recordPattern, FormRowSet rowSet) {
