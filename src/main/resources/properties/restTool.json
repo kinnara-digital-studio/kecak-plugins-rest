@@ -62,6 +62,17 @@
 				name : 'body',
 				label : '@@resttool.body@@',
 				type : 'textarea'
+			}, {
+				name : 'debug',
+				label : '@@resttool.debug@@',
+				description : '@@resttool.debug.desc@@',
+				type : 'checkbox',
+				options : [
+					{
+						value : 'true',
+						label : ''
+					}
+				]
 			}
 		]
 	}, {

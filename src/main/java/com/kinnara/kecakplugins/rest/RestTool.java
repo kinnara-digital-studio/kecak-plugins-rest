@@ -1,25 +1,9 @@
 package com.kinnara.kecakplugins.rest;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-
+import com.google.gson.*;
 import org.apache.http.HttpResponse;
-import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpDelete;
-import org.apache.http.client.methods.HttpEntityEnclosingRequestBase;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.client.methods.HttpPut;
-import org.apache.http.client.methods.HttpRequestBase;
+import org.apache.http.client.methods.*;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.joget.apps.app.dao.FormDefinitionDao;
@@ -32,20 +16,24 @@ import org.joget.apps.form.model.FormData;
 import org.joget.apps.form.model.FormRow;
 import org.joget.apps.form.model.FormRowSet;
 import org.joget.apps.form.service.FormService;
-import org.joget.apps.form.service.FormUtil;
 import org.joget.commons.util.LogUtil;
 import org.joget.plugin.base.DefaultApplicationPlugin;
 import org.joget.workflow.model.WorkflowAssignment;
 import org.joget.workflow.model.service.WorkflowManager;
-import org.joget.workflow.util.WorkflowUtil;
 import org.springframework.context.ApplicationContext;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import com.google.gson.JsonSyntaxException;
-import com.google.gson.stream.JsonReader;
+import javax.annotation.Nonnull;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * 
@@ -91,11 +79,12 @@ public class RestTool extends DefaultApplicationPlugin{
 		WorkflowAssignment wfAssignment = (WorkflowAssignment) properties.get("workflowAssignment");
 		
 		String url = AppUtil.processHashVariable(getPropertyString("url"), wfAssignment, null, null).replaceAll("#", ":");
-		String method = getPropertyString("method");
-		String statusCodeworkflowVariable = getPropertyString("statusCodeworkflowVariable");
-		String contentType = getPropertyString("contentType");
+		String method = String.valueOf(properties.get("method"));
+		String statusCodeworkflowVariable = String.valueOf(properties.get("statusCodeworkflowVariable"));
+		String contentType = String.valueOf(properties.get("contentType"));
 		String body = AppUtil.processHashVariable(getPropertyString("body"), wfAssignment, null, null);
-		
+		boolean debug = "true".equalsIgnoreCase(String.valueOf(properties.get("debug")));
+
 		// Parameters
 		Pattern p = Pattern.compile("https{0,1}://.+\\?.+=,*");
 		Object[] parameters = (Object[]) getProperty("parameters");
@@ -116,7 +105,7 @@ public class RestTool extends DefaultApplicationPlugin{
 		
 		HttpClient client = HttpClientBuilder.create().build();
 		
-		HttpRequestBase request = null;
+		HttpRequestBase request;
 		if("GET".equals(method)) {
 			request = new HttpGet(url);
 		} else if("POST".equals(method)) {
@@ -125,9 +114,12 @@ public class RestTool extends DefaultApplicationPlugin{
 			request = new HttpPut(url);
 		} else if("DELETE".equals(method)) {
 			request = new HttpDelete(url);
+		} else {
+			LogUtil.warn(getClassName(), "Terminating : Method [" + method + "] not supported");
+			return null;
 		}
 		
-		Object[] headers = (Object[]) getProperty("headers");
+		Object[] headers = (Object[]) properties.get("headers");
 		for(Object rowHeader : headers) {
 			Map<String, String> row = (Map<String, String>) rowHeader;
 			request.addHeader(row.get("key"), AppUtil.processHashVariable(row.get("value"), wfAssignment, null, null));
@@ -142,8 +134,18 @@ public class RestTool extends DefaultApplicationPlugin{
 		}
 
 		try {
+			if(debug) {
+				LogUtil.info(getClassName(), "REQUEST DETAILS : ");
+				LogUtil.info(getClassName(), "METHOD ["+request.getMethod()+"]");
+				LogUtil.info(getClassName(), "URI ["+request.getURI().toString()+"]");
+				Arrays.stream(request.getAllHeaders()).forEach(h -> LogUtil.info(getClassName(), "HEADER ["+h.getName()+"] ["+h.getValue()+"]"));
+			}
+
 			HttpResponse response = client.execute(request);
-			LogUtil.info(getClassName(), "####Sending [" + method + "] request to : [" + url + "]");
+
+			if(debug) {
+				LogUtil.info(getClassName(), "Sending [" + method + "] request to : [" + url + "]");
+			}
 
 			String responseContentType = response.getEntity().getContentType().getValue();
 			
@@ -159,9 +161,10 @@ public class RestTool extends DefaultApplicationPlugin{
 					} catch (JsonSyntaxException ex) {
 						// do nothing
 						LogUtil.error(getClassName(), ex, ex.getMessage());
+						return null;
 					}
 
-					Object[] responseBody = (Object[])getProperty("responseBody");
+					Object[] responseBody = (Object[])properties.get("responseBody");
 					for(Object rowResponseBody : responseBody) {
 						Map<String, String> row = (Map<String, String>)rowResponseBody;
 						String[] responseVariables = row.get("responseValue").split("\\.");
@@ -200,11 +203,11 @@ public class RestTool extends DefaultApplicationPlugin{
 								String primaryKey = appService.getOriginProcessId(wfAssignment.getProcessId());
 								parseJson("", completeElement, recordPattern, fieldPattern, true, result, null, getPropertyString("foreignKey"), primaryKey);
 
-								for(FormRow row : result) {
-									System.out.println("------");
-									for(Map.Entry<Object, Object> entry : row.entrySet()) {
-										System.out.println(entry.getKey().toString() + "->" + entry.getValue().toString());
-									}
+								if(debug) {
+									result.stream()
+											.peek(r -> LogUtil.info(getClassName(), "-------Row Set-------"))
+											.flatMap(r -> r.entrySet().stream())
+											.forEach(e -> LogUtil.info(getClassName(), "key ["+ e.getKey()+"] value ["+e.getValue()+"]"));
 								}
 
 								// save data to form
@@ -229,8 +232,20 @@ public class RestTool extends DefaultApplicationPlugin{
 		
 		return null;
 	}
-	
-	private void parseJson(String path, JsonElement element, Pattern recordPattern, Map<String, Pattern> fieldPattern, boolean isLookingForRecordPattern, FormRowSet rowSet, FormRow row, String foreignKeyField, String primaryKey) {    	
+
+	/**
+	 *
+	 * @param path
+	 * @param element
+	 * @param recordPattern
+	 * @param fieldPattern
+	 * @param isLookingForRecordPattern
+	 * @param rowSet
+	 * @param row
+	 * @param foreignKeyField
+	 * @param primaryKey
+	 */
+	private void parseJson(String path, @Nonnull JsonElement element, @Nonnull Pattern recordPattern, @Nonnull Map<String, Pattern> fieldPattern, boolean isLookingForRecordPattern, @Nonnull final FormRowSet rowSet, FormRow row, final String foreignKeyField, final String primaryKey) {
     	Matcher matcher = recordPattern.matcher(path);    	
     	boolean isRecordPath = matcher.find() && isLookingForRecordPattern && element.isJsonObject();
     	
@@ -241,14 +256,14 @@ public class RestTool extends DefaultApplicationPlugin{
     	
     	if(element.isJsonObject()) {
     		parseJsonObject(path, (JsonObject)element, recordPattern, fieldPattern, !isRecordPath && isLookingForRecordPattern, rowSet, row, foreignKeyField, primaryKey);
-    		if(isRecordPath && row != null) {
+    		if(isRecordPath) {
     			if(foreignKeyField != null && !foreignKeyField.isEmpty())
     				row.setProperty(foreignKeyField, primaryKey);
     			rowSet.add(row);
     		}
     	} else if(element.isJsonArray()) {
     		parseJsonArray(path, (JsonArray)element, recordPattern, fieldPattern, !isRecordPath && isLookingForRecordPattern, rowSet, row, foreignKeyField, primaryKey);
-    		if(isRecordPath && row != null) {
+    		if(isRecordPath) {
     			if(foreignKeyField != null && !foreignKeyField.isEmpty())
     				row.setProperty(foreignKeyField, primaryKey);
     			rowSet.add(row);
