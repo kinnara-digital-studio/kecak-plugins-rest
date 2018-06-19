@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
@@ -28,6 +29,8 @@ import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
 import com.google.gson.stream.JsonReader;
 import com.kinnara.kecakplugins.rest.commons.JsonHandler;
+
+import javax.annotation.Nonnull;
 
 /**
  * 
@@ -55,27 +58,14 @@ public class RestDatalistBinder extends DataListBinderDefault{
 		return getPropertyString("primaryKey");
 	}
 
-	public DataListCollection getData(DataList dataList, Map properties, DataListFilterQueryObject[] filterQueryObjects,
-			String sort, Boolean desc, Integer start, Integer rows) {
-		
-		FormRowSet rowSet = executeRequest(0);
-		
-		if(rowSet != null) {
-			DataListCollection results = new DataListCollection();
-			for(FormRow row : rowSet)
-				results.add(row);
-			return results;
-		}
-		
-		return null;
+	public DataListCollection getData(DataList dataList, Map properties, DataListFilterQueryObject[] filterQueryObjects, String sort, Boolean desc, Integer start, Integer rows) {
+		return executeRequest(0).stream().skip(start).limit(rows)
+				.collect(DataListCollection::new, DataListCollection::add, DataListCollection::addAll);
 	}
 
 	public int getDataTotalRowCount(DataList dataList, Map properties, DataListFilterQueryObject[] filterQueryObjects) {
 		// TODO : stop this dumb ways
-		FormRowSet rowSet = executeRequest(0);
-		if(rowSet != null)
-			return rowSet.size();
-		return 0;
+		return executeRequest(0).size();
 	}
 
 	public String getLabel() {
@@ -101,7 +91,8 @@ public class RestDatalistBinder extends DataListBinderDefault{
     public String getDescription() {
     	return "Artifact ID : " + getClass().getPackage().getImplementationTitle();
     } 
-    
+
+    @Nonnull
     private FormRowSet executeRequest(int limit) {
         try {            
             String url = AppUtil.processHashVariable(getPropertyString("url"), null, null, null);
@@ -151,7 +142,7 @@ public class RestDatalistBinder extends DataListBinderDefault{
 				LogUtil.warn(getClassName(), "Content Type [" + responseContentType.toString() + "] is not supported");				
             } else {
             	BufferedReader br = new BufferedReader(new InputStreamReader(response.getEntity().getContent()));
-                StringBuffer sb = new StringBuffer();
+                StringBuilder sb = new StringBuilder();
                 String line;
                 while((line = br.readLine()) != null) {
                 	sb.append(line);
@@ -163,6 +154,6 @@ public class RestDatalistBinder extends DataListBinderDefault{
         } catch (IOException ex) {
             Logger.getLogger(RestOptionsBinder.class.getName()).log(Level.SEVERE, null, ex);
         }
-        return null;
+        return new FormRowSet();
     }
 }
