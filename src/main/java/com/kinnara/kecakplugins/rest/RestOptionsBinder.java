@@ -8,6 +8,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
@@ -144,23 +145,15 @@ public class RestOptionsBinder extends FormBinder implements FormLoadOptionsBind
 							));
 					
 					return result;
-				} catch (UnsupportedOperationException e1) {
-					e1.printStackTrace();
-				} catch (SAXException e1) {
-					e1.printStackTrace();
-				} catch (ParserConfigurationException e) {
-					e.printStackTrace();
+				} catch (UnsupportedOperationException | SAXException | ParserConfigurationException e) {
+					LogUtil.error(getClassName(), e, e.getMessage());
 				}
-				
-            } else {
-            	BufferedReader br = new BufferedReader(new InputStreamReader(response.getEntity().getContent()));
-                StringBuffer sb = new StringBuffer();
-                String line;
-                while((line = br.readLine()) != null) {
-                	sb.append(line);
-                }
-                System.out.println("Not supported yet");
-                System.out.println(sb.toString());
+
+			} else {
+            	try(BufferedReader br = new BufferedReader(new InputStreamReader(response.getEntity().getContent()))) {
+					String lines = br.lines().collect(Collectors.joining());
+					LogUtil.warn(getClassName(), "Lines [" + lines + "]");
+				}
             }
             
         } catch (IOException ex) {
