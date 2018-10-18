@@ -19,6 +19,7 @@ public class Activator implements BundleActivator {
         registrationList.add(context.registerService(RestOptionsBinder.class.getName(), new RestOptionsBinder(), null));
         registrationList.add(context.registerService(RestLoadBinder.class.getName(), new RestLoadBinder(), null));
         registrationList.add(context.registerService(RestStoreBinder.class.getName(), new RestStoreBinder(), null));
+        registrationList.add(context.registerService(RestAPI.class.getName(), new RestAPI(), null));
     }
 
     public void stop(BundleContext context) {
