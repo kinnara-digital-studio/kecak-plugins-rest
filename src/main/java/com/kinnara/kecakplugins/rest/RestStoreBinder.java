@@ -3,10 +3,17 @@ package com.kinnara.kecakplugins.rest;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
+import java.security.KeyManagementException;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 import java.util.Map;
+import java.util.Objects;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
@@ -16,8 +23,11 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpPut;
 import org.apache.http.client.methods.HttpRequestBase;
+import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.ssl.SSLContextBuilder;
 import org.joget.apps.app.model.AppDefinition;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.form.model.Element;
@@ -29,6 +39,8 @@ import org.joget.commons.util.LogUtil;
 import org.joget.workflow.model.WorkflowAssignment;
 import org.joget.workflow.model.service.WorkflowManager;
 import org.springframework.context.ApplicationContext;
+
+import javax.net.ssl.SSLContext;
 
 /**
  * 
@@ -83,63 +95,63 @@ public class RestStoreBinder extends FormBinder implements FormStoreElementBinde
         }
         
         // Parameters
-        Pattern p = Pattern.compile("https{0,1}://.+\\?.+=,*");
         Object[] parameters = (Object[]) getProperty("parameters");
-        if(parameters != null)
-	        for (Object parameter : parameters) {
-	            Map<String, String> row = (Map<String, String>) parameter;
-	
-	            // inflate hash variables
-	            String value = row.get("value");
-	            if(wfAssignment!=null){
-	                value = AppUtil.processHashVariable(row.get("value"), wfAssignment, null, null);
-	            }
-	            // if url already contains parameters, use &
-	            Matcher m = p.matcher(url.trim());
-	            try {
-	                url += String.format("%s%s=%s", m.find() ? "&" : "?", row.get("key"), URLEncoder.encode(value, "UTF-8"));
-	            } catch (UnsupportedEncodingException e) {
-	                LogUtil.error(RestStoreBinder.class.getName(), e, e.getMessage());
-	            }
-	        }
-
-        HttpClient client = HttpClientBuilder.create().build();
-
-        HttpRequestBase request = null;
-        if ("GET".equals(method)) {
-            request = new HttpGet(url);
-        } else if ("POST".equals(method)) {
-            request = new HttpPost(url);
-        } else if ("PUT".equals(method)) {
-            request = new HttpPut(url);
-        } else if ("DELETE".equals(method)) {
-            request = new HttpDelete(url);
-        }
-
-        Object[] headers = (Object[]) getProperty("headers");
-        for (Object rowHeader : headers) {
-            Map<String, String> row = (Map<String, String>) rowHeader;
-            if(wfAssignment!=null){
-                request.addHeader(row.get("key"), AppUtil.processHashVariable(row.get("value"), wfAssignment, null, null));
-            }else{
-                request.addHeader(row.get("key"), row.get("value"));
-            }
-        }
-
-        // Force to use content type from select box
-        request.removeHeaders("Content-Type");
-        request.addHeader("Content-Type", contentType);
-
-        if ("POST".equals(method) || "PUT".equals(method)) {
-            setHttpEntity((HttpEntityEnclosingRequestBase) request, body);
+        if(parameters != null) {
+            url += (url.trim().matches("https{0,1}://.+\\?.+=,*") ? "&" : "?") + Arrays.stream(parameters)
+                    .filter(Objects::nonNull)
+                    .map(o -> (Map<String, String>)o)
+                    .map(m -> String.format("%s=%s", m.get("key"), m.get("value")))
+                    .collect(Collectors.joining("&"));
         }
 
         try {
-            HttpResponse response = client.execute(request);
-            LogUtil.info(getClassName(), "Sending [" + method + "] request to : [" + url + "]");
-        } catch (ClientProtocolException e) {
-            LogUtil.error(RestStoreBinder.class.getName(), e, e.getMessage());
-        } catch (IOException e) {
+            HttpClient client;
+            if ("true".equalsIgnoreCase(getPropertyString("ignoreCertificateError"))) {
+                SSLContext sslContext = new SSLContextBuilder()
+                        .loadTrustMaterial(null, (certificate, authType) -> true).build();
+                client = HttpClients.custom().setSSLContext(sslContext)
+                        .setSSLHostnameVerifier(new NoopHostnameVerifier())
+                        .build();
+            } else {
+                client = HttpClientBuilder.create().build();
+            }
+
+            HttpRequestBase request = null;
+            if ("GET".equals(method)) {
+                request = new HttpGet(url);
+            } else if ("POST".equals(method)) {
+                request = new HttpPost(url);
+            } else if ("PUT".equals(method)) {
+                request = new HttpPut(url);
+            } else if ("DELETE".equals(method)) {
+                request = new HttpDelete(url);
+            }
+
+            Object[] headers = (Object[]) getProperty("headers");
+            for (Object rowHeader : headers) {
+                Map<String, String> row = (Map<String, String>) rowHeader;
+                if (wfAssignment != null) {
+                    request.addHeader(row.get("key"), AppUtil.processHashVariable(row.get("value"), wfAssignment, null, null));
+                } else {
+                    request.addHeader(row.get("key"), row.get("value"));
+                }
+            }
+
+            // Force to use content type from select box
+            request.removeHeaders("Content-Type");
+            request.addHeader("Content-Type", contentType);
+
+            if ("POST".equals(method) || "PUT".equals(method)) {
+                setHttpEntity((HttpEntityEnclosingRequestBase) request, body);
+            }
+
+            try {
+                HttpResponse response = client.execute(request);
+                LogUtil.info(getClassName(), "Sending [" + method + "] request to : [" + url + "]");
+            } catch (IOException e) {
+                LogUtil.error(RestStoreBinder.class.getName(), e, e.getMessage());
+            }
+        } catch (NoSuchAlgorithmException | KeyStoreException | KeyManagementException e) {
             LogUtil.error(RestStoreBinder.class.getName(), e, e.getMessage());
         }
 

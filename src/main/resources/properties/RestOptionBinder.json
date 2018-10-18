@@ -1,12 +1,11 @@
-
 [
     {
         title : '@@restOptionBinder.optionBinder@@',
-        properties  :[
+        properties : [
             {
-                name    :'url',
-                label   :'@@restOptionBinder.apiUrl@@',
-                type    :'textfield',
+                name : 'url',
+                label : '@@restOptionBinder.apiUrl@@',
+                type : 'textfield',
                 required : 'True'
             },
             {
@@ -17,25 +16,27 @@
                     {
                         key : 'key',
                         label : '@@restOptionBinder.key@@'
-                    }, {
+                    },
+                    {
                         key : 'value',
                         label : '@@restOptionBinder.value@@'
                     }
                 ]
             },
             {
-                name    :'headers',
-                label   :'@@restOptionBinder.headers@@',
-                type    :'grid',
-                columns :[
+                name    : 'headers',
+                label   : '@@restOptionBinder.headers@@',
+                type    : 'grid',
+                columns : [
                     {
                         key : 'key',
                         label : '@@restOptionBinder.key@@'
-                    }, {
+                    },
+                    {
                         key : 'value',
                         label : '@@restOptionBinder.value@@'
                     }
-                ],
+                ]
             },
             {
                 name : 'recordPath',

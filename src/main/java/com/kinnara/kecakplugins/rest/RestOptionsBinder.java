@@ -7,6 +7,7 @@ import com.google.gson.stream.JsonReader;
 import com.kinnara.kecakplugins.rest.commons.DefaultXmlSaxHandler;
 import com.kinnara.kecakplugins.rest.commons.FieldMatcher;
 import com.kinnara.kecakplugins.rest.commons.JsonHandler;
+import com.mysql.jdbc.log.Log;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
@@ -25,6 +26,7 @@ import org.springframework.context.ApplicationContext;
 import org.xml.sax.SAXException;
 
 import javax.net.ssl.SSLContext;
+import javax.servlet.http.HttpServletResponse;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
@@ -34,7 +36,9 @@ import java.io.InputStreamReader;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 import java.util.Map;
+import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
@@ -70,25 +74,24 @@ public class RestOptionsBinder extends FormBinder implements FormLoadOptionsBind
     }
 
     public String getPropertyOptions() {
-        return AppUtil.readPluginResource(getClassName(), "/properties/RestOptionBinder.json", null, true, "message/RestOptionBinder");
+        return AppUtil.readPluginResource(getClassName(), "/properties/RestOptionBinder.json", null, false, "message/RestOptionBinder");
     }
 
     public FormRowSet load(Element elmnt, String string, FormData fd) {
         try {
             ApplicationContext appContext = AppUtil.getApplicationContext();
             WorkflowManager workflowManager = (WorkflowManager)appContext.getBean("workflowManager");
-            WorkflowAssignment wfAssignment = (WorkflowAssignment) workflowManager.getAssignment(fd.getActivityId());
+            WorkflowAssignment wfAssignment = workflowManager.getAssignment(fd.getActivityId());
             
             String url = AppUtil.processHashVariable(getPropertyString("url"), wfAssignment, null, null);
             
-            // persiapkan parameter
-            // mengkombine parameter ke url
             Object[] parameters = (Object[]) getProperty("parameters");
             if(parameters != null) {
-				for (Object rowParameter : parameters) {
-					Map<String, String> row = (Map<String, String>) rowParameter;
-					url += String.format("%s%s=%s", url.trim().matches("https{0,1}://.+\\?.+=,*") ? "&" : "?", row.get("key"), row.get("value"));
-				}
+                url += (url.trim().matches("https{0,1}://.+\\?.+=,*") ? "&" : "?") + Arrays.stream(parameters)
+                        .filter(Objects::nonNull)
+                        .map(o -> (Map<String, String>)o)
+                        .map(m -> String.format("%s=%s", m.get("key"), m.get("value")))
+                        .collect(Collectors.joining("&"));
 			}
 
             HttpClient client;
@@ -98,6 +101,9 @@ public class RestOptionsBinder extends FormBinder implements FormLoadOptionsBind
                 client = HttpClients.custom().setSSLContext(sslContext)
                         .setSSLHostnameVerifier(new NoopHostnameVerifier())
                         .build();
+
+                if(client == null)
+                    LogUtil.info(getClassName(), "client is NULL");
             } else {
                 client = HttpClientBuilder.create().build();
             }
@@ -106,17 +112,25 @@ public class RestOptionsBinder extends FormBinder implements FormLoadOptionsBind
             
             // persiapkan HTTP header
             Object[] headers = (Object[]) getProperty("headers");
-            if(headers != null)
-	            for(Object rowHeader : headers){
-	            	Map<String, String> row = (Map<String, String>) rowHeader;
+            if(headers != null) {
+                for (Object rowHeader : headers) {
+                    Map<String, String> row = (Map<String, String>) rowHeader;
                     LogUtil.info(getClassName(), "key [" + row.get("key") + "] value [" + row.get("value") + "]");
 
-	                request.addHeader(row.get("key"), AppUtil.processHashVariable(row.get("value"), wfAssignment, null, null));
-	            }
+                    request.addHeader(row.get("key"), AppUtil.processHashVariable(row.get("value"), wfAssignment, null, null));
+                }
+            }
             
             // kirim request ke server
             HttpResponse response = client.execute(request);
+
+            if(response.getStatusLine().getStatusCode() != HttpServletResponse.SC_OK) {
+                LogUtil.warn(getClassName(), "Response status ["+response.getStatusLine().getStatusCode()+"]");
+                return new FormRowSet();
+            }
+
             String responseContentType = response.getEntity().getContentType().getValue();
+
             
             // get properties
 			String recordPath = getPropertyString("recordPath");
@@ -165,7 +179,6 @@ public class RestOptionsBinder extends FormBinder implements FormLoadOptionsBind
 			} else {
             	try(BufferedReader br = new BufferedReader(new InputStreamReader(response.getEntity().getContent()))) {
 					String lines = br.lines().collect(Collectors.joining());
-					LogUtil.warn(getClassName(), "Lines [" + lines + "]");
 				}
             }
             

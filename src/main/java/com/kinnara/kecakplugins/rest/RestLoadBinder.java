@@ -10,7 +10,10 @@ import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpRequestBase;
+import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.ssl.SSLContextBuilder;
 import org.joget.apps.app.model.AppDefinition;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.form.model.*;
@@ -20,13 +23,20 @@ import org.joget.workflow.model.service.WorkflowManager;
 import org.springframework.context.ApplicationContext;
 import org.xml.sax.SAXException;
 
+import javax.net.ssl.SSLContext;
+import javax.servlet.http.HttpServletResponse;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.security.KeyManagementException;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 import java.util.Map;
+import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
@@ -74,14 +84,26 @@ public class RestLoadBinder extends FormBinder implements FormLoadElementBinder 
             String url = AppUtil.processHashVariable(getPropertyString("url").replaceAll(":id", primaryKey), wfAssignment, null, null);
             
             // combine parameter ke url
-            Object[] parameters = (Object[]) getProperty("parameters");
-            if(parameters != null)
-	            for(Object rowParameter : parameters){
-	            	Map<String, String> row = (Map<String, String>) rowParameter;
-	                url += String.format("%s%s=%s", url.trim().matches("https{0,1}://.+\\?.+=,*") ? "&" : "?" ,row.get("key"), row.get("value").replaceAll(":id", primaryKey));
-	            }
-            
-            HttpClient client = HttpClientBuilder.create().build();
+			Object[] parameters = (Object[]) getProperty("parameters");
+			if(parameters != null) {
+				url += (url.trim().matches("https{0,1}://.+\\?.+=,*") ? "&" : "?") + Arrays.stream(parameters)
+						.filter(Objects::nonNull)
+						.map(o -> (Map<String, String>)o)
+						.map(m -> String.format("%s=%s", m.get("key"), m.get("value")))
+						.collect(Collectors.joining("&"));
+			}
+
+			HttpClient client;
+			if("true".equalsIgnoreCase(getPropertyString("ignoreCertificateError"))) {
+				SSLContext sslContext = new SSLContextBuilder()
+						.loadTrustMaterial(null, (certificate, authType) -> true).build();
+				client = HttpClients.custom().setSSLContext(sslContext)
+						.setSSLHostnameVerifier(new NoopHostnameVerifier())
+						.build();
+			} else {
+				client = HttpClientBuilder.create().build();
+			}
+
             HttpRequestBase request = new HttpGet(url);
             
             // persiapkan HTTP header
@@ -94,6 +116,11 @@ public class RestLoadBinder extends FormBinder implements FormLoadElementBinder 
             
             // kirim request ke server
             HttpResponse response = client.execute(request);
+			if(response.getStatusLine().getStatusCode() != HttpServletResponse.SC_OK) {
+				LogUtil.warn(getClassName(), "Response status ["+response.getStatusLine().getStatusCode()+"]");
+				return new FormRowSet();
+			}
+
             String responseContentType = response.getEntity().getContentType().getValue();
             
             // get properties
@@ -132,10 +159,10 @@ public class RestLoadBinder extends FormBinder implements FormLoadElementBinder 
 					LogUtil.warn(getClassName(), "Response content type [" + responseContentType + "] not supported yet. ["+br.lines().collect(Collectors.joining())+"]");
 				}
             }
-        } catch (IOException ex) {
-            Logger.getLogger(RestOptionsBinder.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (IOException | NoSuchAlgorithmException | KeyStoreException | KeyManagementException e) {
+			LogUtil.error(getClassName(), e, e.getMessage());
         }
-        return null;
+		return null;
     }
      
     private static class LoadBinderSaxHandler extends DefaultXmlSaxHandler {
