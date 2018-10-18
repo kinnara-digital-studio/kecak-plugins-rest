@@ -16,7 +16,7 @@
             columns : [{
                 key : 'key', label : '@@restDataListBinder.key@@'
             }, {
-                value : 'value', label : '@@restDataListBinder.value@@'
+                key : 'value', label : '@@restDataListBinder.value@@'
             }]
         }, {
             name : 'headers',
@@ -25,7 +25,7 @@
             columns : [{
                 key : 'key', label : '@@restDataListBinder.key@@'
             }, {
-                value : 'value', label : '@@restDataListBinder.value@@'
+                key : 'value', label : '@@restDataListBinder.value@@'
             }]
         }, {
             name : 'recordPath',

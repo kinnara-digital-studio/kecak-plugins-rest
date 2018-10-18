@@ -1,38 +1,5 @@
 package com.kinnara.kecakplugins.rest;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-
-import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.parsers.SAXParser;
-import javax.xml.parsers.SAXParserFactory;
-
-import org.apache.http.HttpResponse;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpRequestBase;
-import org.apache.http.impl.client.HttpClientBuilder;
-import org.joget.apps.app.service.AppUtil;
-import org.joget.apps.form.model.Element;
-import org.joget.apps.form.model.FormBinder;
-import org.joget.apps.form.model.FormData;
-import org.joget.apps.form.model.FormLoadOptionsBinder;
-import org.joget.apps.form.model.FormRow;
-import org.joget.apps.form.model.FormRowSet;
-import org.joget.apps.form.service.FormUtil;
-import org.joget.commons.util.LogUtil;
-import org.joget.workflow.model.WorkflowAssignment;
-import org.joget.workflow.model.service.WorkflowManager;
-import org.springframework.context.ApplicationContext;
-import org.xml.sax.SAXException;
-
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
@@ -40,6 +7,39 @@ import com.google.gson.stream.JsonReader;
 import com.kinnara.kecakplugins.rest.commons.DefaultXmlSaxHandler;
 import com.kinnara.kecakplugins.rest.commons.FieldMatcher;
 import com.kinnara.kecakplugins.rest.commons.JsonHandler;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpRequestBase;
+import org.apache.http.conn.ssl.NoopHostnameVerifier;
+import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.ssl.SSLContextBuilder;
+import org.joget.apps.app.service.AppUtil;
+import org.joget.apps.form.model.*;
+import org.joget.apps.form.service.FormUtil;
+import org.joget.commons.util.LogUtil;
+import org.joget.workflow.model.WorkflowAssignment;
+import org.joget.workflow.model.service.WorkflowManager;
+import org.springframework.context.ApplicationContext;
+import org.xml.sax.SAXException;
+
+import javax.net.ssl.SSLContext;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.parsers.SAXParser;
+import javax.xml.parsers.SAXParserFactory;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.security.KeyManagementException;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * 
@@ -84,13 +84,24 @@ public class RestOptionsBinder extends FormBinder implements FormLoadOptionsBind
             // persiapkan parameter
             // mengkombine parameter ke url
             Object[] parameters = (Object[]) getProperty("parameters");
-            if(parameters != null)
-	            for(Object rowParameter : parameters){
-	            	Map<String, String> row = (Map<String, String>) rowParameter;
-	                url += String.format("%s%s=%s", url.trim().matches("https{0,1}://.+\\?.+=,*") ? "&" : "?" ,row.get("key"), row.get("value"));
-	            }
-            
-            HttpClient client = HttpClientBuilder.create().build();
+            if(parameters != null) {
+				for (Object rowParameter : parameters) {
+					Map<String, String> row = (Map<String, String>) rowParameter;
+					url += String.format("%s%s=%s", url.trim().matches("https{0,1}://.+\\?.+=,*") ? "&" : "?", row.get("key"), row.get("value"));
+				}
+			}
+
+            HttpClient client;
+            if("true".equalsIgnoreCase(getPropertyString("ignoreCertificateError"))) {
+                SSLContext sslContext = new SSLContextBuilder()
+                        .loadTrustMaterial(null, (certificate, authType) -> true).build();
+                client = HttpClients.custom().setSSLContext(sslContext)
+                        .setSSLHostnameVerifier(new NoopHostnameVerifier())
+                        .build();
+            } else {
+                client = HttpClientBuilder.create().build();
+            }
+
             HttpRequestBase request = new HttpGet(url);
             
             // persiapkan HTTP header
@@ -98,6 +109,8 @@ public class RestOptionsBinder extends FormBinder implements FormLoadOptionsBind
             if(headers != null)
 	            for(Object rowHeader : headers){
 	            	Map<String, String> row = (Map<String, String>) rowHeader;
+                    LogUtil.info(getClassName(), "key [" + row.get("key") + "] value [" + row.get("value") + "]");
+
 	                request.addHeader(row.get("key"), AppUtil.processHashVariable(row.get("value"), wfAssignment, null, null));
 	            }
             
@@ -156,7 +169,7 @@ public class RestOptionsBinder extends FormBinder implements FormLoadOptionsBind
 				}
             }
             
-        } catch (IOException ex) {
+        } catch (IOException | NoSuchAlgorithmException | KeyManagementException | KeyStoreException ex) {
             Logger.getLogger(RestOptionsBinder.class.getName()).log(Level.SEVERE, null, ex);
         }
         return null;

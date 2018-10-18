@@ -13,20 +13,28 @@
             label : '@@restLoadBinder.parameters@@',
             type : 'grid',
             description : '@@restLoadBinder.apiUrl.description@@',
-            columns : [{
-                key : 'key', label : '@@restLoadBinder.key@@'
-            }, {
-                value : 'value', label : '@@restLoadBinder.value@@'
-            }]
+            columns : [
+                {
+                    key : 'key',
+                    label : '@@restLoadBinder.key@@'
+                }, {
+                    key : 'value',
+                    label : '@@restLoadBinder.value@@'
+                }
+            ]
         }, {
             name : 'headers',
             label : '@@restLoadBinder.headers@@',
             type : 'grid',
-            columns : [{
-                key : 'key', label : '@@restLoadBinder.key@@'
-            }, {
-                value : 'value', label : '@@restLoadBinder.value@@'
-            }]
+            columns : [
+                {
+                    key : 'key',
+                    label : '@@restLoadBinder.key@@'
+                }, {
+                    key : 'value',
+                    label : '@@restLoadBinder.value@@'
+                }
+            ]
         }, {
             name : 'recordPath',
             label : '@@restLoadBinder.recordPath@@',
