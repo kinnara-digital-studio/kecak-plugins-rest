@@ -58,14 +58,12 @@ public class RestAPI extends Element implements PluginWebSupport{
 
 	@Override
 	public String getVersion() {
-		// TODO Auto-generated method stub
-		return "1.0.0";
+		return getClass().getPackage().getImplementationVersion();
 	}
 
 	@Override
 	public String getDescription() {
-		// TODO Auto-generated method stub
-		return "";
+		return "Artifact ID : " + getClass().getPackage().getImplementationTitle();
 	}
 
 	@Override
@@ -100,28 +98,21 @@ public class RestAPI extends Element implements PluginWebSupport{
 		        	JsonArray arrResult = new JsonArray();
 		        	for (FormRow row : results) {
 		        		JsonArray arrRow = new JsonArray();
-                        FormRow newRow = new FormRow();
                         String id = row.getProperty(idColumn);
                         String label = row.getProperty(labelColumn);
                         String grouping = "";
                         if (groupingColumn != null && !groupingColumn.isEmpty() && row.containsKey(groupingColumn)) {
                             grouping = row.getProperty(groupingColumn);
                         }
-
+                        
                         if (id != null && !id.isEmpty() && label != null && !label.isEmpty()) {
-                        	JsonObject jId = new JsonObject();
-                        	jId.addProperty(FormUtil.PROPERTY_VALUE, id);
-                        	arrRow.add(jId);
-                        	
-                        	JsonObject jLabel = new JsonObject();
-                        	jLabel.addProperty(FormUtil.PROPERTY_LABEL, "true".equals(getPropertyString("showIdInLabel"))
-                                            ? String.format("%s (%s)", label, id)
-                                            : label);
-                        	arrRow.add(jLabel);
-                        	
-                        	JsonObject jGrouping = new JsonObject();
-                        	jGrouping.addProperty(FormUtil.PROPERTY_GROUPING, grouping);
-                        	arrRow.add(jGrouping);
+                        	JsonObject content = new JsonObject();
+                        	content.addProperty(FormUtil.PROPERTY_VALUE, id);
+                        	content.addProperty(FormUtil.PROPERTY_LABEL, "true".equals(getPropertyString("showIdInLabel"))
+                                    ? String.format("%s (%s)", label, id)
+                                    : label);
+                        	content.addProperty(FormUtil.PROPERTY_GROUPING, grouping);
+                        	arrRow.add(content);
                         }
                         arrResult.add(arrRow);
                     }
