@@ -3,6 +3,9 @@ package com.kinnara.kecakplugins.rest;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.security.KeyManagementException;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -13,7 +16,10 @@ import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpRequestBase;
+import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.ssl.SSLContextBuilder;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.datalist.model.DataList;
 import org.joget.apps.datalist.model.DataListBinderDefault;
@@ -31,6 +37,7 @@ import com.google.gson.stream.JsonReader;
 import com.kinnara.kecakplugins.rest.commons.JsonHandler;
 
 import javax.annotation.Nonnull;
+import javax.net.ssl.SSLContext;
 
 /**
  * 
@@ -103,11 +110,21 @@ public class RestDatalistBinder extends DataListBinderDefault{
             if(parameters != null) {
 	            for(Object rowParameter : parameters){
 	            	Map<String, String> row = (Map<String, String>) rowParameter;
-	                url += String.format("%s%s=%s", url.trim().matches("https{0,1}://.+\\?.+=,*") ? "&" : "?" ,row.get("key"), row.get("value"));
+	                url += String.format("%s%s=%s", url.trim().matches("https{0,1}://.+\\?.*") ? "&" : "?" ,row.get("key"), row.get("value"));
 	            }
             }
-            
-            HttpClient client = HttpClientBuilder.create().build();
+
+			HttpClient client;
+			if("true".equalsIgnoreCase(getPropertyString("ignoreCertificateError"))) {
+				SSLContext sslContext = new SSLContextBuilder()
+						.loadTrustMaterial(null, (certificate, authType) -> true).build();
+				client = HttpClients.custom().setSSLContext(sslContext)
+						.setSSLHostnameVerifier(new NoopHostnameVerifier())
+						.build();
+			} else {
+				client = HttpClientBuilder.create().build();
+			}
+
             HttpRequestBase request = new HttpGet(url);
             
             // persiapkan HTTP header
@@ -151,7 +168,7 @@ public class RestDatalistBinder extends DataListBinderDefault{
                 LogUtil.warn(getClassName(), sb.toString());
             }
             
-        } catch (IOException ex) {
+        } catch (IOException | NoSuchAlgorithmException | KeyStoreException | KeyManagementException ex) {
             Logger.getLogger(RestOptionsBinder.class.getName()).log(Level.SEVERE, null, ex);
         }
         return new FormRowSet();

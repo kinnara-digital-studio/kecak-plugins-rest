@@ -2,40 +2,58 @@
 [
     {
         title : '@@restDataListBinder.dataListBinder@@',
-        properties  :[{
-            name : 'url',
-            label : '@@restDataListBinder.apiUrl@@',
-            description : '@@restDataListBinder.apiUrl.description@@',
-            type : 'textfield',
-            required : 'True'
-        }, {
-            name : 'parameters',
-            label : '@@restDataListBinder.parameters@@',
-            type : 'grid',
-            description : '@@restDataListBinder.apiUrl.description@@',
-            columns : [{
-                key : 'key', label : '@@restDataListBinder.key@@'
+        properties  :[
+            {
+                name : 'url',
+                label : '@@restDataListBinder.apiUrl@@',
+                description : '@@restDataListBinder.apiUrl.description@@',
+                type : 'textfield',
+                required : 'True'
             }, {
-                key : 'value', label : '@@restDataListBinder.value@@'
-            }]
-        }, {
-            name : 'headers',
-            label : '@@restDataListBinder.headers@@',
-            type : 'grid',
-            columns : [{
-                key : 'key', label : '@@restDataListBinder.key@@'
+                name : 'parameters',
+                label : '@@restDataListBinder.parameters@@',
+                type : 'grid',
+                description : '@@restDataListBinder.apiUrl.description@@',
+                columns : [{
+                    key : 'key', label : '@@restDataListBinder.key@@'
+                }, {
+                    key : 'value', label : '@@restDataListBinder.value@@'
+                }]
             }, {
-                key : 'value', label : '@@restDataListBinder.value@@'
-            }]
-        }, {
-            name : 'recordPath',
-            label : '@@restDataListBinder.recordPath@@',
-            type : 'textfield'
-        }, {
-            name : 'primaryKey',
-            label : '@@restDataListBinder.primaryKey@@',
-            required : 'true',
-            type : 'textfield'
-        }]
+                name : 'headers',
+                label : '@@restDataListBinder.headers@@',
+                type : 'grid',
+                columns : [{
+                    key : 'key', label : '@@restDataListBinder.key@@'
+                }, {
+                    key : 'value', label : '@@restDataListBinder.value@@'
+                }]
+            }, {
+                name : 'recordPath',
+                label : '@@restDataListBinder.recordPath@@',
+                type : 'textfield'
+            }, {
+                name : 'primaryKey',
+                label : '@@restDataListBinder.primaryKey@@',
+                required : 'true',
+                type : 'textfield'
+            },
+            {
+                title : '@@restDataListBinder.security@@',
+                properties : [
+                    {
+                        name : 'ignoreCertificateError',
+                        label : '@@restDataListBinder.ignoreCertificateError@@',
+                        type : 'checkbox',
+                        options : [
+                            {
+                                value : 'true',
+                                label : ''
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
     }
 ]

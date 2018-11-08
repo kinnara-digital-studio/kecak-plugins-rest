@@ -97,10 +97,10 @@ public class RestStoreBinder extends FormBinder implements FormStoreElementBinde
         // Parameters
         Object[] parameters = (Object[]) getProperty("parameters");
         if(parameters != null) {
-            url += (url.trim().matches("https{0,1}://.+\\?.+=,*") ? "&" : "?") + Arrays.stream(parameters)
+            url += (url.trim().matches("https{0,1}://.+\\?.*") ? "&" : "?") + Arrays.stream(parameters)
                     .filter(Objects::nonNull)
                     .map(o -> (Map<String, String>)o)
-                    .map(m -> String.format("%s=%s", m.get("key"), m.get("value")))
+                    .map(m -> String.format("%s=%s", m.get("key"), AppUtil.processHashVariable(m.get("value"), wfAssignment, null, null)))
                     .collect(Collectors.joining("&"));
         }
 
