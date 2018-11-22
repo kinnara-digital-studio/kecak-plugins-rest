@@ -1,0 +1,59 @@
+[
+    {
+        title : '@@rest.participant.setting.title@@',
+        properties  :[
+            {
+                name : 'url',
+                label : '@@rest.participant.setting.url@@',
+                description : '@@rest.participant.setting.description@@',
+                type : 'textfield',
+                required : 'true'
+            }, {
+                name : 'parameters',
+                label : '@@rest.participant.setting.parameters@@',
+                type : 'grid',
+                columns : [{
+                    key : 'key', label : '@@rest.participant.setting.key@@'
+                }, {
+                    key : 'value', label : '@@rest.participant.setting.value@@'
+                }]
+            }, {
+                name : 'headers',
+                label : '@@rest.participant.setting.headers@@',
+                type : 'grid',
+                columns : [{
+                    key : 'key', label : '@@rest.participant.setting.key@@'
+                }, {
+                    key : 'value', label : '@@rest.participant.setting.value@@'
+                }]
+            }, {
+                name : 'recordPath',
+                label : '@@rest.participant.setting.recordPath@@',
+                type : 'textfield'
+            },{
+                name : 'ufieldId',
+                label : '@@rest.participant.setting.ufieldId@@',
+                type : 'textfield'
+            },{
+                name : 'sfieldId',
+                label : '@@rest.participant.setting.sfieldId@@',
+                type : 'textfield'
+            }
+        ]
+    },{
+        title : '@@rest.participant.setting.security@@',
+        properties : [
+            {
+                name : 'ignoreCertificateError',
+                label : '@@rest.participant.setting.ignoreCertificateError@@',
+                type : 'checkbox',
+                options : [
+                    {
+                        value : 'true',
+                        label : ''
+                    }
+                ]
+            }
+        ]
+    }
+]
