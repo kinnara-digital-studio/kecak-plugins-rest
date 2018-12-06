@@ -43,13 +43,13 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
- * 
+ *
  * @author aristo
  *
  */
 public class RestTool extends DefaultApplicationPlugin{
 	private final static String LABEL = "REST Tool";
-	
+
 	public String getLabel() {
 		return LABEL;
 	}
@@ -60,11 +60,11 @@ public class RestTool extends DefaultApplicationPlugin{
 
 	public String getPropertyOptions() {
 		AppDefinition appDef = AppUtil.getCurrentAppDefinition();
-        String appId = appDef.getId();
-        String appVersion = appDef.getVersion().toString();
-        Object[] arguments = new Object[]{appId, appVersion, appId, appVersion, appId, appVersion};
-        String json = AppUtil.readPluginResource((String)this.getClass().getName(), (String)"/properties/restTool.json", (Object[])arguments, (boolean)true, (String)"message/restTool");
-        return json;
+		String appId = appDef.getId();
+		String appVersion = appDef.getVersion().toString();
+		Object[] arguments = new Object[]{appId, appVersion, appId, appVersion, appId, appVersion};
+		String json = AppUtil.readPluginResource((String)this.getClass().getName(), (String)"/properties/restTool.json", (Object[])arguments, (boolean)true, (String)"message/restTool");
+		return json;
 	}
 
 	public String getName() {
@@ -118,9 +118,6 @@ public class RestTool extends DefaultApplicationPlugin{
 				client = HttpClients.custom().setSSLContext(sslContext)
 						.setSSLHostnameVerifier(new NoopHostnameVerifier())
 						.build();
-
-				if(client == null)
-					LogUtil.info(getClassName(), "client is NULL");
 			} else {
 				client = HttpClientBuilder.create().build();
 			}
@@ -153,104 +150,105 @@ public class RestTool extends DefaultApplicationPlugin{
 				setHttpEntity((HttpEntityEnclosingRequestBase) request, body);
 			}
 
-			if(debug) {
-				LogUtil.info(getClassName(), "REQUEST DETAILS : ");
-				LogUtil.info(getClassName(), "METHOD ["+request.getMethod()+"]");
-				LogUtil.info(getClassName(), "URI ["+request.getURI().toString()+"]");
-				Arrays.stream(request.getAllHeaders()).forEach(h -> LogUtil.info(getClassName(), "HEADER ["+h.getName()+"] ["+h.getValue()+"]"));
-			}
-
-			HttpResponse response = client.execute(request);
-
-			if(debug) {
-				LogUtil.info(getClassName(), "Sending [" + method + "] request to : [" + url + "]");
-			}
-
-			String responseContentType = response.getEntity().getContentType().getValue();
-			
-			try(BufferedReader br = new BufferedReader(new InputStreamReader(response.getEntity().getContent()))) {
-				if(!statusCodeworkflowVariable.isEmpty())
-					workflowManager.processVariable(wfAssignment.getProcessId(), statusCodeworkflowVariable, String.valueOf(response.getStatusLine().getStatusCode()));
-
-				if(responseContentType.contains("application/json")) {
-					JsonParser parser = new JsonParser();
-					JsonElement completeElement = null;
-					try {
-						completeElement = parser.parse(br);
-					} catch (JsonSyntaxException ex) {
-						// do nothing
-						LogUtil.error(getClassName(), ex, ex.getMessage());
-						return null;
-					}
-
-					Object[] responseBody = (Object[])properties.get("responseBody");
-					for(Object rowResponseBody : responseBody) {
-						Map<String, String> row = (Map<String, String>)rowResponseBody;
-						String[] responseVariables = (row.get("responseValue") == null ? "" : row.get("responseValue")).split("\\.");
-						JsonElement currentElement = completeElement;
-						for(String responseVariable : responseVariables) {
-							if(currentElement == null)
-								break;
-
-							currentElement = getJsonResultVariable(responseVariable, currentElement);
-						}
-
-						if(currentElement != null && currentElement.isJsonPrimitive()) {
-							if(row.get("workflowVariable") != null && !row.get("workflowVariable").isEmpty())
-							workflowManager.processVariable(wfAssignment.getProcessId(), row.get("workflowVariable"), currentElement.getAsString());
-						}
-					}
-
-					// Form Binding
-					String formDefId = getPropertyString("formDefId");
-					if(formDefId != null && !formDefId.isEmpty()) {
-						Form form = generateForm(formDefId);
-
-						if(form != null) {
-							try {
-								String recordPath = getPropertyString("jsonRecordPath");
-								Object[] fieldMapping = (Object[])getProperty("fieldMapping");
-
-								Pattern recordPattern = Pattern.compile(recordPath.replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
-								Map<String, Pattern> fieldPattern = new HashMap<String, Pattern>();
-								for(Object o : fieldMapping) {
-									Map<String, String> mapping = (Map<String, String>)o;
-									Pattern pattern = Pattern.compile(mapping.get("jsonPath").replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
-									fieldPattern.put(mapping.get("formField").toString(), pattern);
-								}
-
-								AppService appService = (AppService)appContext.getBean("appService");
-								FormRowSet result = new FormRowSet();
-								String primaryKey = appService.getOriginProcessId(wfAssignment.getProcessId());
-								parseJson("", completeElement, recordPattern, fieldPattern, true, result, null, getPropertyString("foreignKey"), primaryKey);
-
-								if(debug) {
-									result.stream()
-											.peek(r -> LogUtil.info(getClassName(), "-------Row Set-------"))
-											.flatMap(r -> r.entrySet().stream())
-											.forEach(e -> LogUtil.info(getClassName(), "key ["+ e.getKey()+"] value ["+e.getValue()+"]"));
-								}
-
-								// save data to form
-								form.getStoreBinder().store(form, result, new FormData());
-							} catch (JsonSyntaxException ex) {
-								LogUtil.error(getClassName(), ex, ex.getMessage());
-							}
-						} else {
-							LogUtil.warn(getClassName(), "Error generating form [" + formDefId + "]");
-						}
-					}
-
-				} else {
-					LogUtil.warn(getClassName(), "URL [" + request.getURI().toString()
-							+ "] Response Content-Type : [" + responseContentType + "] not supported [" + br.lines().collect(Collectors.joining()) + "]");
-
+			try {
+				if(debug) {
+					LogUtil.info(getClassName(), "REQUEST DETAILS : ");
+					LogUtil.info(getClassName(), "METHOD ["+request.getMethod()+"]");
+					LogUtil.info(getClassName(), "URI ["+request.getURI().toString()+"]");
+					Arrays.stream(request.getAllHeaders()).forEach(h -> LogUtil.info(getClassName(), "HEADER ["+h.getName()+"] ["+h.getValue()+"]"));
 				}
+
+				HttpResponse response = client.execute(request);
+
+				if(debug) {
+					LogUtil.info(getClassName(), "Sending [" + method + "] request to : [" + url + "]");
+				}
+
+				String responseContentType = response.getEntity().getContentType().getValue();
+
+				try(BufferedReader br = new BufferedReader(new InputStreamReader(response.getEntity().getContent()))) {
+					if(!statusCodeworkflowVariable.isEmpty())
+						workflowManager.processVariable(wfAssignment.getProcessId(), statusCodeworkflowVariable, String.valueOf(response.getStatusLine().getStatusCode()));
+
+					if(responseContentType.contains("application/json")) {
+						JsonParser parser = new JsonParser();
+						JsonElement completeElement = null;
+						try {
+							completeElement = parser.parse(br);
+						} catch (JsonSyntaxException ex) {
+							// do nothing
+							LogUtil.error(getClassName(), ex, ex.getMessage());
+							return null;
+						}
+
+						Object[] responseBody = (Object[])properties.get("responseBody");
+						for(Object rowResponseBody : responseBody) {
+							Map<String, String> row = (Map<String, String>)rowResponseBody;
+							String[] responseVariables = row.get("responseValue").split("\\.");
+							JsonElement currentElement = completeElement;
+							for(String responseVariable : responseVariables) {
+								if(currentElement == null)
+									break;
+
+								currentElement = getJsonResultVariable(responseVariable, currentElement);
+							}
+							if(currentElement != null && currentElement.isJsonPrimitive()) {
+								workflowManager.processVariable(wfAssignment.getProcessId(), row.get("workflowVariable"), currentElement.getAsString());
+							}
+						}
+
+						// Form Binding
+						String formDefId = getPropertyString("formDefId");
+						if(formDefId != null && !formDefId.isEmpty()) {
+							Form form = generateForm(formDefId);
+
+							if(form != null) {
+								try {
+									String recordPath = getPropertyString("jsonRecordPath");
+									Object[] fieldMapping = (Object[])getProperty("fieldMapping");
+
+									Pattern recordPattern = Pattern.compile(recordPath.replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
+									Map<String, Pattern> fieldPattern = new HashMap<String, Pattern>();
+									for(Object o : fieldMapping) {
+										Map<String, String> mapping = (Map<String, String>)o;
+										Pattern pattern = Pattern.compile(mapping.get("jsonPath").replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
+										fieldPattern.put(mapping.get("formField").toString(), pattern);
+									}
+
+									AppService appService = (AppService)appContext.getBean("appService");
+									FormRowSet result = new FormRowSet();
+									String primaryKey = appService.getOriginProcessId(wfAssignment.getProcessId());
+									parseJson("", completeElement, recordPattern, fieldPattern, true, result, null, getPropertyString("foreignKey"), primaryKey);
+
+									if(debug) {
+										result.stream()
+												.peek(r -> LogUtil.info(getClassName(), "-------Row Set-------"))
+												.flatMap(r -> r.entrySet().stream())
+												.forEach(e -> LogUtil.info(getClassName(), "key ["+ e.getKey()+"] value ["+e.getValue()+"]"));
+									}
+
+									// save data to form
+									form.getStoreBinder().store(form, result, new FormData());
+								} catch (JsonSyntaxException ex) {
+									LogUtil.error(getClassName(), ex, ex.getMessage());
+								}
+							} else {
+								LogUtil.warn(getClassName(), "Error generating form [" + formDefId + "]");
+							}
+						}
+
+					} else {
+						LogUtil.warn(getClassName(), "URL [" + request.getURI().toString()
+								+ "] Response Content-Type : [" + responseContentType + "] not supported [" + br.lines().collect(Collectors.joining()) + "]");
+
+					}
+				}
+			} catch (IOException e) {
+				LogUtil.error(getClassName(), e, e.getMessage());
 			}
-		} catch (IOException | NoSuchAlgorithmException | KeyStoreException | KeyManagementException e) {
-			LogUtil.error(getClassName(), e, e.getMessage());
+		} catch (NoSuchAlgorithmException | KeyStoreException | KeyManagementException ex) {
+			LogUtil.error(getClassName(), ex, ex.getMessage());
 		}
-		
 		return null;
 	}
 
@@ -267,55 +265,55 @@ public class RestTool extends DefaultApplicationPlugin{
 	 * @param primaryKey
 	 */
 	private void parseJson(String path, @Nonnull JsonElement element, @Nonnull Pattern recordPattern, @Nonnull Map<String, Pattern> fieldPattern, boolean isLookingForRecordPattern, @Nonnull final FormRowSet rowSet, FormRow row, final String foreignKeyField, final String primaryKey) {
-    	Matcher matcher = recordPattern.matcher(path);    	
-    	boolean isRecordPath = matcher.find() && isLookingForRecordPattern && element.isJsonObject();
-    	
-    	if(isRecordPath) {
-    		// start looking for value and label pattern
-    		row = new FormRow();
-    	}
-    	
-    	if(element.isJsonObject()) {
-    		parseJsonObject(path, (JsonObject)element, recordPattern, fieldPattern, !isRecordPath && isLookingForRecordPattern, rowSet, row, foreignKeyField, primaryKey);
-    		if(isRecordPath) {
-    			if(foreignKeyField != null && !foreignKeyField.isEmpty())
-    				row.setProperty(foreignKeyField, primaryKey);
-    			rowSet.add(row);
-    		}
-    	} else if(element.isJsonArray()) {
-    		parseJsonArray(path, (JsonArray)element, recordPattern, fieldPattern, !isRecordPath && isLookingForRecordPattern, rowSet, row, foreignKeyField, primaryKey);
-    		if(isRecordPath) {
-    			if(foreignKeyField != null && !foreignKeyField.isEmpty())
-    				row.setProperty(foreignKeyField, primaryKey);
-    			rowSet.add(row);
-    		}
-    	} else if(element.isJsonPrimitive() && !isLookingForRecordPattern) {
-    		for(Map.Entry<String, Pattern> entry : fieldPattern.entrySet()) {
-    			setRow(entry.getValue().matcher(path), entry.getKey(), element.getAsString(), row);
-    		}
-    	}
-    }
-	
+		Matcher matcher = recordPattern.matcher(path);
+		boolean isRecordPath = matcher.find() && isLookingForRecordPattern && element.isJsonObject();
+
+		if(isRecordPath) {
+			// start looking for value and label pattern
+			row = new FormRow();
+		}
+
+		if(element.isJsonObject()) {
+			parseJsonObject(path, (JsonObject)element, recordPattern, fieldPattern, !isRecordPath && isLookingForRecordPattern, rowSet, row, foreignKeyField, primaryKey);
+			if(isRecordPath) {
+				if(foreignKeyField != null && !foreignKeyField.isEmpty())
+					row.setProperty(foreignKeyField, primaryKey);
+				rowSet.add(row);
+			}
+		} else if(element.isJsonArray()) {
+			parseJsonArray(path, (JsonArray)element, recordPattern, fieldPattern, !isRecordPath && isLookingForRecordPattern, rowSet, row, foreignKeyField, primaryKey);
+			if(isRecordPath) {
+				if(foreignKeyField != null && !foreignKeyField.isEmpty())
+					row.setProperty(foreignKeyField, primaryKey);
+				rowSet.add(row);
+			}
+		} else if(element.isJsonPrimitive() && !isLookingForRecordPattern) {
+			for(Map.Entry<String, Pattern> entry : fieldPattern.entrySet()) {
+				setRow(entry.getValue().matcher(path), entry.getKey(), element.getAsString(), row);
+			}
+		}
+	}
+
 	private void setRow(Matcher matcher, String key, String value, FormRow row) {
-    	if(matcher.find() && row != null && row.getProperty(key) == null) {
+		if(matcher.find() && row != null && row.getProperty(key) == null) {
 			row.setProperty(key, value);
-    	}
-    }
-	
+		}
+	}
+
 	private void parseJsonObject(String path, JsonObject json, Pattern recordPattern, Map<String, Pattern> fieldPattern, boolean isLookingForRecordPattern, FormRowSet rowSet, FormRow row, String foreignKeyField, String primaryKey) {
 		for(Map.Entry<String, JsonElement> entry : json.entrySet()) {
 			parseJson(path + "." + entry.getKey(), entry.getValue(), recordPattern, fieldPattern, isLookingForRecordPattern, rowSet, row, foreignKeyField, primaryKey);
 		}
-    }
-    
-    private void parseJsonArray(String path, JsonArray json, Pattern recordPattern, Map<String, Pattern> fieldPattern, boolean isLookingForRecordPattern, FormRowSet rowSet, FormRow row, String foreignKeyField, String primaryKey) {    	
-    	for(int i = 0, size = json.size(); i < size; i++) {
+	}
+
+	private void parseJsonArray(String path, JsonArray json, Pattern recordPattern, Map<String, Pattern> fieldPattern, boolean isLookingForRecordPattern, FormRowSet rowSet, FormRow row, String foreignKeyField, String primaryKey) {
+		for(int i = 0, size = json.size(); i < size; i++) {
 			parseJson(path, json.get(i), recordPattern, fieldPattern, isLookingForRecordPattern, rowSet, row, foreignKeyField, primaryKey);
 		}
-    }
-	
+	}
+
 	/**
-	 * 
+	 *
 	 * @param request : POST or PUT request
 	 * @param entity : body content
 	 */
@@ -326,9 +324,9 @@ public class RestTool extends DefaultApplicationPlugin{
 			e.printStackTrace();
 		}
 	}
-	
+
 	/**
-	 * 
+	 *
 	 * @param variable : variable name to search
 	 * @param element : element to search for variable
 	 * @return
@@ -342,11 +340,11 @@ public class RestTool extends DefaultApplicationPlugin{
 			return element;
 		return null;
 	}
-	
+
 	private JsonElement getJsonResultVariableFromObject(String variable, JsonObject object) {
 		return object.get(variable);
 	}
-	
+
 	private JsonElement getJsonResultVariableFromArray(String variable, JsonArray array) {
 		for(JsonElement item : array) {
 			JsonElement result = getJsonResultVariable(variable, item);
@@ -356,34 +354,34 @@ public class RestTool extends DefaultApplicationPlugin{
 		}
 		return null;
 	}
-	
+
 	private Map<String, Form> formCache = new HashMap<String, Form>();
-	
+
 	private Form generateForm(String formDefId) {
 		ApplicationContext appContext = AppUtil.getApplicationContext();
 		FormService formService = (FormService) appContext.getBean("formService");
 		FormDefinitionDao formDefinitionDao = (FormDefinitionDao)appContext.getBean("formDefinitionDao");
-		
-    	// check in cache
-    	if(formCache != null && formCache.containsKey(formDefId))
-    		return formCache.get(formDefId);
-    	
-    	// proceed without cache    	
-        Form form = null;
-        AppDefinition appDef = AppUtil.getCurrentAppDefinition();
-        if (appDef != null && formDefId != null && !formDefId.isEmpty()) {
-            FormDefinition formDef = formDefinitionDao.loadById(formDefId, appDef);
-            if (formDef != null) {
-                String json = formDef.getJson();
-                form = (Form)formService.createElementFromJson(json);
-                
-                // put in cache if possible
-                if(formCache != null)
-                	formCache.put(formDefId, form);
-                
-                return form;
-            }
-        }
-        return null;
+
+		// check in cache
+		if(formCache != null && formCache.containsKey(formDefId))
+			return formCache.get(formDefId);
+
+		// proceed without cache    	
+		Form form = null;
+		AppDefinition appDef = AppUtil.getCurrentAppDefinition();
+		if (appDef != null && formDefId != null && !formDefId.isEmpty()) {
+			FormDefinition formDef = formDefinitionDao.loadById(formDefId, appDef);
+			if (formDef != null) {
+				String json = formDef.getJson();
+				form = (Form)formService.createElementFromJson(json);
+
+				// put in cache if possible
+				if(formCache != null)
+					formCache.put(formDefId, form);
+
+				return form;
+			}
+		}
+		return null;
 	}
 }
