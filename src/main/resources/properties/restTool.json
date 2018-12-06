@@ -136,24 +136,6 @@
             }
 		]
 	},
-<<<<<<< HEAD
-	{
-		title : '@@resttool.security@@',
-		properties : [
-			{
-				name : 'ignoreCertificateError',
-				label : '@@resttool.ignoreCertificateError@@',
-				type : 'checkbox',
-				options : [
-					{
-						value : 'true',
-						label : ''
-					}
-				]
-			}
-		]
-	}
-=======
     {
         title : '@@resttool.security@@',
         properties : [
@@ -170,5 +152,4 @@
             }
         ]
     }
->>>>>>> 9733cc2d52a4337ec489934061bd3e2076621d3a
 ]
