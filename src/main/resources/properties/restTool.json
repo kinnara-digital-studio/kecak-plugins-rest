@@ -135,5 +135,21 @@
             	]
             }
 		]
+	},
+	{
+		title : '@@resttool.security@@',
+		properties : [
+			{
+				name : 'ignoreCertificateError',
+				label : '@@resttool.ignoreCertificateError@@',
+				type : 'checkbox',
+				options : [
+					{
+						value : 'true',
+						label : ''
+					}
+				]
+			}
+		]
 	}
 ]

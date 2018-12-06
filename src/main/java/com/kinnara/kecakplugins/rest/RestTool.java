@@ -4,8 +4,11 @@ import com.google.gson.*;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.*;
+import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.ssl.SSLContextBuilder;
 import org.joget.apps.app.dao.FormDefinitionDao;
 import org.joget.apps.app.model.AppDefinition;
 import org.joget.apps.app.model.FormDefinition;
@@ -23,11 +26,15 @@ import org.joget.workflow.model.service.WorkflowManager;
 import org.springframework.context.ApplicationContext;
 
 import javax.annotation.Nonnull;
+import javax.net.ssl.SSLContext;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
+import java.security.KeyManagementException;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -74,66 +81,78 @@ public class RestTool extends DefaultApplicationPlugin{
 
 	@Override
 	public Object execute(Map properties) {
-	    ApplicationContext appContext = AppUtil.getApplicationContext();
-	    WorkflowManager workflowManager = (WorkflowManager)appContext.getBean("workflowManager");
-		WorkflowAssignment wfAssignment = (WorkflowAssignment) properties.get("workflowAssignment");
-		
-		String url = AppUtil.processHashVariable(getPropertyString("url"), wfAssignment, null, null).replaceAll("#", ":");
-		String method = String.valueOf(properties.get("method"));
-		String statusCodeworkflowVariable = String.valueOf(properties.get("statusCodeworkflowVariable"));
-		String contentType = String.valueOf(properties.get("contentType"));
-		String body = AppUtil.processHashVariable(getPropertyString("body"), wfAssignment, null, null);
-		boolean debug = "true".equalsIgnoreCase(String.valueOf(properties.get("debug")));
-
-		// Parameters
-		Pattern p = Pattern.compile("https{0,1}://.+\\?.+=,*");
-		Object[] parameters = (Object[]) getProperty("parameters");
-		for(Object parameter : parameters) {
-			Map<String, String> row = (Map<String, String>)parameter;
-			
-			// inflate hash variables
-			String value = AppUtil.processHashVariable(row.get("value"), wfAssignment, null, null);
-			
-			// if url already contains parameters, use &
-			Matcher m = p.matcher(url.trim());
-			try {
-				url += String.format("%s%s=%s", m.find() ? "&" : "?" ,row.get("key"), URLEncoder.encode(value, "UTF-8"));
-			} catch (UnsupportedEncodingException e) {
-				e.printStackTrace();
-			}
-		}
-		
-		HttpClient client = HttpClientBuilder.create().build();
-		
-		HttpRequestBase request;
-		if("GET".equals(method)) {
-			request = new HttpGet(url);
-		} else if("POST".equals(method)) {
-			request = new HttpPost(url);
-		} else if("PUT".equals(method)) {
-			request = new HttpPut(url);
-		} else if("DELETE".equals(method)) {
-			request = new HttpDelete(url);
-		} else {
-			LogUtil.warn(getClassName(), "Terminating : Method [" + method + "] not supported");
-			return null;
-		}
-		
-		Object[] headers = (Object[]) properties.get("headers");
-		for(Object rowHeader : headers) {
-			Map<String, String> row = (Map<String, String>) rowHeader;
-			request.addHeader(row.get("key"), AppUtil.processHashVariable(row.get("value"), wfAssignment, null, null));
-		}
-		
-		// Force to use content type from select box
-		request.removeHeaders("Content-Type");
-		request.addHeader("Content-Type", contentType);
-		
-		if("POST".equals(method) || "PUT".equals(method)) {
-			setHttpEntity((HttpEntityEnclosingRequestBase) request, body);
-		}
-
 		try {
+			ApplicationContext appContext = AppUtil.getApplicationContext();
+			WorkflowManager workflowManager = (WorkflowManager)appContext.getBean("workflowManager");
+			WorkflowAssignment wfAssignment = (WorkflowAssignment) properties.get("workflowAssignment");
+
+			String url = AppUtil.processHashVariable(getPropertyString("url"), wfAssignment, null, null).replaceAll("#", ":");
+			String method = String.valueOf(properties.get("method"));
+			String statusCodeworkflowVariable = String.valueOf(properties.get("statusCodeworkflowVariable"));
+			String contentType = String.valueOf(properties.get("contentType"));
+			String body = AppUtil.processHashVariable(getPropertyString("body"), wfAssignment, null, null);
+			boolean debug = "true".equalsIgnoreCase(String.valueOf(properties.get("debug")));
+
+			// Parameters
+			Pattern p = Pattern.compile("https{0,1}://.+\\?.+=,*");
+			Object[] parameters = (Object[]) getProperty("parameters");
+			for(Object parameter : parameters) {
+				Map<String, String> row = (Map<String, String>)parameter;
+
+				// inflate hash variables
+				String value = AppUtil.processHashVariable(row.get("value"), wfAssignment, null, null);
+
+				// if url already contains parameters, use &
+				Matcher m = p.matcher(url.trim());
+				try {
+					url += String.format("%s%s=%s", m.find() ? "&" : "?" ,row.get("key"), URLEncoder.encode(value, "UTF-8"));
+				} catch (UnsupportedEncodingException e) {
+					e.printStackTrace();
+				}
+			}
+
+			HttpClient client;
+			if("true".equalsIgnoreCase(getPropertyString("ignoreCertificateError"))) {
+				SSLContext sslContext = new SSLContextBuilder()
+						.loadTrustMaterial(null, (certificate, authType) -> true).build();
+				client = HttpClients.custom().setSSLContext(sslContext)
+						.setSSLHostnameVerifier(new NoopHostnameVerifier())
+						.build();
+
+				if(client == null)
+					LogUtil.info(getClassName(), "client is NULL");
+			} else {
+				client = HttpClientBuilder.create().build();
+			}
+
+			HttpRequestBase request;
+			if("GET".equals(method)) {
+				request = new HttpGet(url);
+			} else if("POST".equals(method)) {
+				request = new HttpPost(url);
+			} else if("PUT".equals(method)) {
+				request = new HttpPut(url);
+			} else if("DELETE".equals(method)) {
+				request = new HttpDelete(url);
+			} else {
+				LogUtil.warn(getClassName(), "Terminating : Method [" + method + "] not supported");
+				return null;
+			}
+
+			Object[] headers = (Object[]) properties.get("headers");
+			for(Object rowHeader : headers) {
+				Map<String, String> row = (Map<String, String>) rowHeader;
+				request.addHeader(row.get("key"), AppUtil.processHashVariable(row.get("value"), wfAssignment, null, null));
+			}
+
+			// Force to use content type from select box
+			request.removeHeaders("Content-Type");
+			request.addHeader("Content-Type", contentType);
+
+			if("POST".equals(method) || "PUT".equals(method)) {
+				setHttpEntity((HttpEntityEnclosingRequestBase) request, body);
+			}
+
 			if(debug) {
 				LogUtil.info(getClassName(), "REQUEST DETAILS : ");
 				LogUtil.info(getClassName(), "METHOD ["+request.getMethod()+"]");
@@ -167,7 +186,7 @@ public class RestTool extends DefaultApplicationPlugin{
 					Object[] responseBody = (Object[])properties.get("responseBody");
 					for(Object rowResponseBody : responseBody) {
 						Map<String, String> row = (Map<String, String>)rowResponseBody;
-						String[] responseVariables = row.get("responseValue").split("\\.");
+						String[] responseVariables = (row.get("responseValue") == null ? "" : row.get("responseValue")).split("\\.");
 						JsonElement currentElement = completeElement;
 						for(String responseVariable : responseVariables) {
 							if(currentElement == null)
@@ -175,7 +194,9 @@ public class RestTool extends DefaultApplicationPlugin{
 
 							currentElement = getJsonResultVariable(responseVariable, currentElement);
 						}
+
 						if(currentElement != null && currentElement.isJsonPrimitive()) {
+							if(row.get("workflowVariable") != null && !row.get("workflowVariable").isEmpty())
 							workflowManager.processVariable(wfAssignment.getProcessId(), row.get("workflowVariable"), currentElement.getAsString());
 						}
 					}
@@ -226,7 +247,7 @@ public class RestTool extends DefaultApplicationPlugin{
 
 				}
 			}
-		} catch (IOException e) {
+		} catch (IOException | NoSuchAlgorithmException | KeyStoreException | KeyManagementException e) {
 			LogUtil.error(getClassName(), e, e.getMessage());
 		}
 		

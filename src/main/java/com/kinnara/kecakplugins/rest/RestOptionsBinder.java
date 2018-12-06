@@ -7,7 +7,6 @@ import com.google.gson.stream.JsonReader;
 import com.kinnara.kecakplugins.rest.commons.DefaultXmlSaxHandler;
 import com.kinnara.kecakplugins.rest.commons.FieldMatcher;
 import com.kinnara.kecakplugins.rest.commons.JsonHandler;
-import com.mysql.jdbc.log.Log;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
@@ -178,6 +177,7 @@ public class RestOptionsBinder extends FormBinder implements FormLoadOptionsBind
 			} else {
             	try(BufferedReader br = new BufferedReader(new InputStreamReader(response.getEntity().getContent()))) {
 					String lines = br.lines().collect(Collectors.joining());
+					LogUtil.info(getClassName(), "Response ["+lines+"]");
 				}
             }
             
