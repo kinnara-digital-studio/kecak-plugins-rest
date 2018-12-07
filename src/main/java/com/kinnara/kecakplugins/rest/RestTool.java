@@ -1,6 +1,7 @@
 package com.kinnara.kecakplugins.rest;
 
 import com.google.gson.*;
+import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.*;
@@ -164,9 +165,21 @@ public class RestTool extends DefaultApplicationPlugin{
 					LogUtil.info(getClassName(), "Sending [" + method + "] request to : [" + url + "]");
 				}
 
-				String responseContentType = response.getEntity().getContentType().getValue();
+				HttpEntity entity = response.getEntity();
+
+				if(entity == null) {
+					LogUtil.info(getClassName(), "Response : NULL");
+					return null;
+				}
+
+				String responseContentType = entity.getContentType().getValue();
 
 				try(BufferedReader br = new BufferedReader(new InputStreamReader(response.getEntity().getContent()))) {
+
+					if(debug) {
+						LogUtil.info(getClassName(), "Response : content-type [" + responseContentType + "] body [" + br.lines().collect(Collectors.joining()) + "]");
+					}
+
 					if(!statusCodeworkflowVariable.isEmpty())
 						workflowManager.processVariable(wfAssignment.getProcessId(), statusCodeworkflowVariable, String.valueOf(response.getStatusLine().getStatusCode()));
 
