@@ -1,20 +1,20 @@
 package com.kinnara.kecakplugins.rest.commons;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import org.joget.apps.form.model.FormRow;
+import org.joget.apps.form.model.FormRowSet;
+
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import org.joget.apps.form.model.FormRow;
-import org.joget.apps.form.model.FormRowSet;
-
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
+import java.util.stream.Collectors;
 
 public class JsonHandler {
-	private Collection<FieldMatcher> fieldMatchers = new HashSet<FieldMatcher>();
+	private Collection<FieldMatcher> fieldMatchers = new HashSet<>();
 	private Pattern noPattern = Pattern.compile(".");
 	
 	private JsonElement json;
@@ -31,8 +31,9 @@ public class JsonHandler {
 	
 	public final FormRowSet parse(int limit) {
 		FormRowSet rowSet = new FormRowSet();
-		parseJson("", "", json, recordPattern, true, rowSet, null, limit - 1);
-		return rowSet;
+		parseJson("", "", json, recordPattern, true, rowSet, null);
+		return rowSet.stream().limit(limit == 0 ? Integer.MAX_VALUE : limit)
+				.collect(Collectors.toCollection(FormRowSet::new));
 	}
 	
 	public final JsonHandler addFieldMatcher(FieldMatcher m) {
@@ -40,10 +41,7 @@ public class JsonHandler {
 		return this;
 	}
 	
-    private final void parseJson(String currentKey, String path, JsonElement element, Pattern recordPattern, boolean isLookingForRecordPattern, FormRowSet rowSet, FormRow row, final int limit) {
-		if(limit == 0)
-			return;
-
+    private final void parseJson(String currentKey, String path, JsonElement element, Pattern recordPattern, boolean isLookingForRecordPattern, FormRowSet rowSet, FormRow row) {
     	Matcher matcher = recordPattern.matcher(path);    	
     	boolean isRecordPath = matcher.find() && isLookingForRecordPattern && element.isJsonObject();
     	
@@ -54,13 +52,13 @@ public class JsonHandler {
     	
     	if(element.isJsonObject()) {
     		// JSONObject data
-    		parseJsonObject(path, (JsonObject)element, recordPattern, !isRecordPath && isLookingForRecordPattern, rowSet, row, limit);
-    		if(isRecordPath && row != null)
+    		parseJsonObject(path, (JsonObject)element, recordPattern, !isRecordPath && isLookingForRecordPattern, rowSet, row);
+    		if(isRecordPath)
     			rowSet.add(row);
     	} else if(element.isJsonArray()) {
     		// JSONArray data
-    		parseJsonArray(currentKey, path, (JsonArray)element, recordPattern, !isRecordPath && isLookingForRecordPattern, rowSet, row, limit);
-    		if(isRecordPath && row != null)
+    		parseJsonArray(currentKey, path, (JsonArray)element, recordPattern, !isRecordPath && isLookingForRecordPattern, rowSet, row);
+    		if(isRecordPath)
     			rowSet.add(row);
     	} else if(element.isJsonPrimitive() && !isLookingForRecordPattern) {
     		// plain data
@@ -76,15 +74,15 @@ public class JsonHandler {
     	}
     }
     
-    private void parseJsonObject(String path, JsonObject json, Pattern recordPattern, boolean isLookingForRecordPattern, FormRowSet rowSet, FormRow row, final int limit) {
+    private void parseJsonObject(String path, JsonObject json, Pattern recordPattern, boolean isLookingForRecordPattern, FormRowSet rowSet, FormRow row) {
 		for(Map.Entry<String, JsonElement> entry : json.entrySet()) {
-			parseJson(entry.getKey(), path + "." + entry.getKey(), entry.getValue(), recordPattern, isLookingForRecordPattern, rowSet, row, limit - 1);
+			parseJson(entry.getKey(), path + "." + entry.getKey(), entry.getValue(), recordPattern, isLookingForRecordPattern, rowSet, row);
 		}
     }
     
-    private void parseJsonArray(String currentKey, String path, JsonArray json, Pattern recordPattern, boolean isLookingForRecordPattern, FormRowSet rowSet, FormRow row, final int limit) {
+    private void parseJsonArray(String currentKey, String path, JsonArray json, Pattern recordPattern, boolean isLookingForRecordPattern, FormRowSet rowSet, FormRow row) {
     	for(int i = 0, size = json.size(); i < size; i++) {
-			parseJson(currentKey, path, json.get(i), recordPattern, isLookingForRecordPattern, rowSet, row, limit - 1);
+			parseJson(currentKey, path, json.get(i), recordPattern, isLookingForRecordPattern, rowSet, row);
 		}
     }
     

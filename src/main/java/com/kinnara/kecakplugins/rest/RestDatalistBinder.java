@@ -139,9 +139,9 @@ public class RestDatalistBinder extends DataListBinderDefault{
 			Pattern recordPattern = Pattern.compile(recordPath.replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
 			
             if(responseContentType.contains("application/json")) {
-				try {
-					JsonParser parser = new JsonParser();
-					JsonElement element = parser.parse(new JsonReader(new InputStreamReader(response.getEntity().getContent())));
+				JsonParser parser = new JsonParser();
+				try(JsonReader reader = new JsonReader(new InputStreamReader(response.getEntity().getContent()))) {
+					JsonElement element = parser.parse(reader);
 					JsonHandler handler = new JsonHandler(element, recordPattern);
 					
 					return handler.parse(limit);

@@ -17,6 +17,7 @@ import org.apache.http.ssl.SSLContextBuilder;
 import org.joget.apps.app.model.AppDefinition;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.form.model.*;
+import org.joget.apps.form.service.FormUtil;
 import org.joget.commons.util.LogUtil;
 import org.joget.workflow.model.WorkflowAssignment;
 import org.joget.workflow.model.service.WorkflowManager;
@@ -73,7 +74,10 @@ public class RestLoadBinder extends FormBinder implements FormLoadElementBinder 
         return json;
     }
 
+    @Override
     public FormRowSet load(Element elmnt, String primaryKey, FormData fd) {
+    	LogUtil.info(getClassName(), "Element ["+ FormUtil.getElementParameterName(elmnt) +"] primaryKey ["+primaryKey+"]");
+
         try {
             ApplicationContext appContext = AppUtil.getApplicationContext();
             WorkflowManager workflowManager = (WorkflowManager)appContext.getBean("workflowManager");
@@ -104,6 +108,7 @@ public class RestLoadBinder extends FormBinder implements FormLoadElementBinder 
 				client = HttpClientBuilder.create().build();
 			}
 
+			LogUtil.info(getClassName(), "url ["+url+"]");
             HttpRequestBase request = new HttpGet(url);
             
             // persiapkan HTTP header
@@ -129,11 +134,12 @@ public class RestLoadBinder extends FormBinder implements FormLoadElementBinder 
 			Pattern recordPattern = Pattern.compile(recordPath.replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
 			
             if(responseContentType.contains("application/json")) {
-				try {
-					JsonParser parser = new JsonParser();
-					JsonElement element = parser.parse(new JsonReader(new InputStreamReader(response.getEntity().getContent())));
+				JsonParser parser = new JsonParser();
+				try(JsonReader reader = new JsonReader(new InputStreamReader(response.getEntity().getContent()))) {
+					JsonElement element = parser.parse(reader);
+					LogUtil.info(getClassName(), "json element ["+element.toString()+"]");
 					JsonHandler handler = new JsonHandler(element, recordPattern);
-					FormRowSet result = handler.parse(1);					
+					FormRowSet result = handler.parse(1);
 					return result;
 				} catch (JsonSyntaxException ex) {
 					LogUtil.error(getClassName(), ex, ex.getMessage());

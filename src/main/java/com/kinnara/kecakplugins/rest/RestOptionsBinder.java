@@ -76,6 +76,7 @@ public class RestOptionsBinder extends FormBinder implements FormLoadOptionsBind
         return AppUtil.readPluginResource(getClassName(), "/properties/RestOptionBinder.json", null, false, "message/RestOptionBinder");
     }
 
+    @Override
     public FormRowSet load(Element elmnt, String string, FormData fd) {
         try {
             ApplicationContext appContext = AppUtil.getApplicationContext();
@@ -142,9 +143,9 @@ public class RestOptionsBinder extends FormBinder implements FormLoadOptionsBind
 			Pattern groupPattern = Pattern.compile(groupPath.replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
 			
             if(responseContentType.contains("application/json")) {
-				try {
-					JsonParser parser = new JsonParser();
-					JsonElement element = parser.parse(new JsonReader(new InputStreamReader(response.getEntity().getContent())));
+				JsonParser parser = new JsonParser();
+				try(JsonReader reader = new JsonReader(new InputStreamReader(response.getEntity().getContent()))) {
+					JsonElement element = parser.parse(reader);
 					JsonHandler handler = new JsonHandler(element, recordPattern);
 					FormRowSet result = handler
 						.addFieldMatcher(FieldMatcher.build(valuePattern, FormUtil.PROPERTY_VALUE))
