@@ -108,7 +108,7 @@ public class RestTool extends DefaultApplicationPlugin{
 				try {
 					url += String.format("%s%s=%s", m.find() ? "&" : "?" ,row.get("key"), URLEncoder.encode(value, "UTF-8"));
 				} catch (UnsupportedEncodingException e) {
-					e.printStackTrace();
+					LogUtil.error(getClassName(), e, e.getMessage());
 				}
 			}
 
