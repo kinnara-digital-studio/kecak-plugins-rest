@@ -1,4 +1,3 @@
-
 [
     {
         title : '@@restDataListBinder.dataListBinder@@',
@@ -8,7 +7,7 @@
                 label : '@@restDataListBinder.apiUrl@@',
                 description : '@@restDataListBinder.apiUrl.description@@',
                 type : 'textfield',
-                required : 'True'
+                required : 'true'
             }, {
                 name : 'parameters',
                 label : '@@restDataListBinder.parameters@@',
@@ -37,20 +36,20 @@
                 label : '@@restDataListBinder.primaryKey@@',
                 required : 'true',
                 type : 'textfield'
-            },
+            }
+        ]
+    },
+    {
+        title : '@@restDataListBinder.security@@',
+        properties : [
             {
-                title : '@@restDataListBinder.security@@',
-                properties : [
+                name : 'ignoreCertificateError',
+                label : '@@restDataListBinder.ignoreCertificateError@@',
+                type : 'checkbox',
+                options : [
                     {
-                        name : 'ignoreCertificateError',
-                        label : '@@restDataListBinder.ignoreCertificateError@@',
-                        type : 'checkbox',
-                        options : [
-                            {
-                                value : 'true',
-                                label : ''
-                            }
-                        ]
+                        value : 'true',
+                        label : ''
                     }
                 ]
             }
