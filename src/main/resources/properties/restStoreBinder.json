@@ -1,60 +1,82 @@
-[{
-	title : '@@resttool.editrequest@@',
-    properties : [{
+[
+  {
+	title : '@@rest.storeBinder@@',
+    properties : [
+      {
     	name : 'url',
-        label : '@@resttool.apiUrl@@',
+        label : '@@rest.apiUrl@@',
         type : 'textfield',
         required : 'True'
-    }, {
-    	name : 'method',
-        label : '@@resttool.method@@',
-        type : 'selectbox',
-        options : [{
-        	value : 'GET',
-            label : 'GET'
-        }, {
-        	value : 'POST',
-            label : 'POST'
-        }, {
-        	value : 'PUT',
-            label : 'PUT'
-        }, {
-        	value : 'DELETE',
-            label : 'DELETE'
-        }]
-    }, {
-    	name : 'parameters',
-        label : '@@resttool.parameters@@',
+      }, {
+          name : 'method',
+          label : '@@rest.method@@',
+          type : 'selectbox',
+          options : [
+            {
+              value : 'GET',
+              label : 'GET'
+            }, {
+                value : 'POST',
+                label : 'POST'
+            }, {
+                value : 'PUT',
+                label : 'PUT'
+            }, {
+                value : 'DELETE',
+                label : 'DELETE'
+            }
+          ]
+      }, {
+        name : 'parameters',
+        label : '@@rest.parameters@@',
         type : 'grid',
         columns : [
-            {key : 'key', label : '@@resttool.key@@'},
-            {key : 'value', label : '@@resttool.value@@'}
+          {key : 'key', label : '@@rest.key@@'},
+          {key : 'value', label : '@@rest.value@@'}
         ]
-    }, {
-    	name : 'headers',
-        label : '@@resttool.headers@@',
+      }, {
+        name : 'headers',
+        label : '@@rest.headers@@',
         type : 'grid',
         columns : [
-            {key : 'key', label : '@@resttool.key@@'},
-            {key : 'value', label : '@@resttool.value@@'}
+          {key : 'key', label : '@@rest.key@@'},
+          {key : 'value', label : '@@rest.value@@'}
         ]
-    }, {
-    	name : 'contentType',
-        label : '@@resttool.contentType@@',
+      }, {
+        name : 'contentType',
+        label : '@@rest.contentType@@',
         type : 'selectbox',
-        options : [{
+        required : 'true',
+        options : [
+          {
             value : 'application/json',
             label : 'application/json'
-        }, {
-            value : 'application/xml',
-            label : 'application/xml'
-        }, {
-        	value : 'multipart - form - data',
-            label : 'multipart - form - data'
-        }]
-    }, {
-    	name : 'body',
-        label : '@@resttool.body@@',
-        type : 'textarea'
-    }]
-}]
+          }
+        ]
+      },
+      {
+        name : 'body',
+        label : '@@rest.body@@',
+        description : '@@rest.body.description@@',
+        type : 'CodeEditor',
+        mode : 'json'
+      }
+    ]
+  },
+  {
+    title : '@@rest.security@@',
+    properties : [
+      {
+        name : 'ignoreCertificateError',
+        label : '@@rest.ignoreCertificateError@@',
+        type : 'checkbox',
+        options : [
+          {
+            value : 'true',
+            label : ''
+          }
+        ]
+      }
+    ]
+  }
+]

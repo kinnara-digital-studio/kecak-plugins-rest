@@ -17,7 +17,6 @@ import org.apache.http.ssl.SSLContextBuilder;
 import org.joget.apps.app.model.AppDefinition;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.form.model.*;
-import org.joget.apps.form.service.FormUtil;
 import org.joget.commons.util.LogUtil;
 import org.joget.workflow.model.WorkflowAssignment;
 import org.joget.workflow.model.service.WorkflowManager;
@@ -43,7 +42,7 @@ import java.util.stream.Collectors;
 
 public class RestLoadBinder extends FormBinder implements FormLoadElementBinder {
 	private String LABEL = "REST Load Binder";
-	
+
     public String getName() {
         return LABEL;
     }
@@ -70,21 +69,23 @@ public class RestLoadBinder extends FormBinder implements FormLoadElementBinder 
         String appVersion = appDef.getVersion().toString();
         Object[] arguments = new Object[]{appId, appVersion, appId, appVersion, appId, appVersion};
         String json;
-        json = AppUtil.readPluginResource(this.getClass().getName(), "/properties/RestLoadBinder.json", arguments, true, "message/RestLoadBinder");
+        json = AppUtil.readPluginResource(this.getClass().getName(), "/properties/RestLoadBinder.json", arguments, true, "message/Rest");
         return json;
     }
 
     @Override
     public FormRowSet load(Element elmnt, String primaryKey, FormData fd) {
-    	LogUtil.info(getClassName(), "Element ["+ FormUtil.getElementParameterName(elmnt) +"] primaryKey ["+primaryKey+"]");
+    	if(primaryKey == null || primaryKey.isEmpty()) {
+    		LogUtil.warn(getClassName(), "Primary Key is not defined or empty");
+		}
 
         try {
             ApplicationContext appContext = AppUtil.getApplicationContext();
             WorkflowManager workflowManager = (WorkflowManager)appContext.getBean("workflowManager");
             WorkflowAssignment wfAssignment = workflowManager.getAssignment(fd.getActivityId());
-            
+
             String url = AppUtil.processHashVariable(getPropertyString("url"), wfAssignment, null, null);
-            
+
             // combine parameter ke url
 			Object[] parameters = (Object[]) getProperty("parameters");
 			if(parameters != null) {
@@ -110,7 +111,7 @@ public class RestLoadBinder extends FormBinder implements FormLoadElementBinder 
 
 			LogUtil.info(getClassName(), "url ["+url+"]");
             HttpRequestBase request = new HttpGet(url);
-            
+
             // persiapkan HTTP header
             Object[] headers = (Object[]) getProperty("headers");
             if(headers != null)
@@ -118,7 +119,7 @@ public class RestLoadBinder extends FormBinder implements FormLoadElementBinder 
 	            	Map<String, String> row = (Map<String, String>) rowHeader;
 	                request.addHeader(row.get("key"), AppUtil.processHashVariable(row.get("value"), wfAssignment, null, null));
 	            }
-            
+
             // kirim request ke server
             HttpResponse response = client.execute(request);
 			if(response.getStatusLine().getStatusCode() != HttpServletResponse.SC_OK) {
@@ -127,12 +128,12 @@ public class RestLoadBinder extends FormBinder implements FormLoadElementBinder 
 			}
 
             String responseContentType = response.getEntity().getContentType().getValue();
-            
+
             // get properties
 			String recordPath = getPropertyString("recordPath");
-			
+
 			Pattern recordPattern = Pattern.compile(recordPath.replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
-			
+
             if(responseContentType.contains("application/json")) {
 				JsonParser parser = new JsonParser();
 				try(JsonReader reader = new JsonReader(new InputStreamReader(response.getEntity().getContent()))) {
@@ -145,7 +146,7 @@ public class RestLoadBinder extends FormBinder implements FormLoadElementBinder 
 					LogUtil.error(getClassName(), ex, ex.getMessage());
 				}
             } else if(responseContentType.contains("application/xml") || responseContentType.contains("text/xml")) {
-				try {					
+				try {
 					FormRowSet result = new FormRowSet();
 					SAXParserFactory factory = SAXParserFactory.newInstance();
 					SAXParser saxParser = factory.newSAXParser();
@@ -154,7 +155,7 @@ public class RestLoadBinder extends FormBinder implements FormLoadElementBinder 
 									Pattern.compile(recordPath.replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE),
 									result
 							));
-					
+
 					return result;
 				} catch (UnsupportedOperationException | SAXException | ParserConfigurationException e1) {
 					e1.printStackTrace();
@@ -170,11 +171,11 @@ public class RestLoadBinder extends FormBinder implements FormLoadElementBinder 
         }
 		return null;
     }
-     
+
     private static class LoadBinderSaxHandler extends DefaultXmlSaxHandler {
     	private FormRowSet rowSet;
     	private FormRow row;
-    	
+
     	/**
     	 * @param recordPattern
     	 * @param rowSet : output parameter, the record set being built

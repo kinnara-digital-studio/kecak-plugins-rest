@@ -1,51 +1,51 @@
 [
     {
-        title : '@@restLoadBinder.optionBinder@@',
+        title : '@@rest.loadBinder@@',
         properties  :[{
             name : 'url',
-            label : '@@restLoadBinder.apiUrl@@',
-            description : '@@restLoadBinder.apiUrl.description@@',
+            label : '@@rest.apiUrl@@',
+            description : '@@rest.apiUrl.description.primaryKey@@',
             type : 'textfield',
             required : 'True'
         }, {
             name : 'parameters',
-            label : '@@restLoadBinder.parameters@@',
+            label : '@@rest.parameters@@',
             type : 'grid',
-            description : '@@restLoadBinder.apiUrl.description@@',
+            description : '@@rest.apiUrl.description@@',
             columns : [
                 {
                     key : 'key',
-                    label : '@@restLoadBinder.key@@'
+                    label : '@@rest.key@@'
                 }, {
                     key : 'value',
-                    label : '@@restLoadBinder.value@@'
+                    label : '@@rest.value@@'
                 }
             ]
         }, {
             name : 'headers',
-            label : '@@restLoadBinder.headers@@',
+            label : '@@rest.headers@@',
             type : 'grid',
             columns : [
                 {
                     key : 'key',
-                    label : '@@restLoadBinder.key@@'
+                    label : '@@rest.key@@'
                 }, {
                     key : 'value',
-                    label : '@@restLoadBinder.value@@'
+                    label : '@@rest.value@@'
                 }
             ]
         }, {
             name : 'recordPath',
-            label : '@@restLoadBinder.recordPath@@',
+            label : '@@rest.recordPath@@',
             type : 'textfield'
         }]
     },
     {
-        title : '@@restLoadBinder.security@@',
+        title : '@@rest.security@@',
         properties : [
             {
                 name : 'ignoreCertificateError',
-                label : '@@restLoadBinder.ignoreCertificateError@@',
+                label : '@@rest.ignoreCertificateError@@',
                 type : 'checkbox',
                 options : [
                     {

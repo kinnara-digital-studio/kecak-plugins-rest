@@ -38,6 +38,7 @@ import com.google.gson.stream.JsonReader;
 import com.kinnara.kecakplugins.rest.commons.JsonHandler;
 
 public class RestParticipantMapper extends DefaultParticipantPlugin{
+	private final static String LABEL = "REST Participant Mapping";
 
 	@Override
 	public Collection<String> getActivityAssignments(Map props) {
@@ -119,7 +120,7 @@ public class RestParticipantMapper extends DefaultParticipantPlugin{
 
 	@Override
 	public String getLabel() {
-		return this.getName();
+		return LABEL;
 	}
 
 	@Override
@@ -134,7 +135,7 @@ public class RestParticipantMapper extends DefaultParticipantPlugin{
 
 	@Override
 	public String getName() {
-		return "REST-Participant Mapper";
+		return LABEL;
 	}
 
 	@Override
@@ -144,7 +145,7 @@ public class RestParticipantMapper extends DefaultParticipantPlugin{
 
 	@Override
 	public String getDescription() {
-		return "Artifact ID : " + getClass().getPackage().getImplementationTitle();
+		return getClass().getPackage().getImplementationTitle();
 	}
 
 }

@@ -46,22 +46,18 @@
 				name : 'contentType',
 				label : '@@resttool.contentType@@',
 				type : 'selectbox',
+				required : 'true',
 				options : [
 					{
 						value : 'application/json',
 						label : 'application/json'
-					}, {
-						value : 'application/xml',
-						label : 'application/xml'
-					}, {
-						value : 'multipart-form-data',
-						label : 'multipart-form-data'
 					}
 				]
 			}, {
 				name : 'body',
 				label : '@@resttool.body@@',
-				type : 'textarea'
+				type : 'CodeEditor',
+				mode : 'json'
 			}, {
 				name : 'debug',
 				label : '@@resttool.debug@@',
