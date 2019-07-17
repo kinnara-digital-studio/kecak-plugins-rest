@@ -5,7 +5,6 @@
             {
                 name : 'url',
                 label : '@@restDataListBinder.apiUrl@@',
-                description : '@@restDataListBinder.apiUrl.description@@',
                 type : 'textfield',
                 required : 'true'
             }, {

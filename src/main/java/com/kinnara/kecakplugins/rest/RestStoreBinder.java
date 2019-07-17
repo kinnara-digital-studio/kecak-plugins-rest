@@ -106,26 +106,35 @@ public class RestStoreBinder extends FormBinder implements FormStoreElementBinde
                 client = HttpClientBuilder.create().build();
             }
 
-            HttpRequestBase request = null;
-            if ("GET".equals(method)) {
-                request = new HttpGet(url);
-            } else if ("POST".equals(method)) {
+            final HttpRequestBase request;
+
+            if ("POST".equals(method)) {
                 request = new HttpPost(url);
             } else if ("PUT".equals(method)) {
                 request = new HttpPut(url);
             } else if ("DELETE".equals(method)) {
                 request = new HttpDelete(url);
+            } else {
+                request = new HttpGet(url);
             }
 
-            Object[] headers = (Object[]) getProperty("headers");
-            for (Object rowHeader : headers) {
-                Map<String, String> row = (Map<String, String>) rowHeader;
-                if (wfAssignment != null) {
-                    request.addHeader(row.get("key"), AppUtil.processHashVariable(row.get("value"), wfAssignment, null, null));
-                } else {
-                    request.addHeader(row.get("key"), row.get("value"));
-                }
-            }
+//            Object[] headers = (Object[]) getProperty("headers");
+//            for (Object rowHeader : headers) {
+//                Map<String, String> row = (Map<String, String>) rowHeader;
+//                if (wfAssignment != null) {
+//                    request.addHeader(row.get("key"), AppUtil.processHashVariable(row.get("value"), wfAssignment, null, null));
+//                } else {
+//                    request.addHeader(row.get("key"), row.get("value"));
+//                }
+//            }
+
+            Optional.ofNullable(getProperty("headers"))
+                    .map(o -> (Object[])o)
+                    .map(Arrays::stream)
+                    .orElse(Stream.empty())
+                    .map(o -> (Map<String, String>)o)
+                    .filter(r -> !String.valueOf(r.get("key")).trim().isEmpty())
+                    .forEach(row -> request.addHeader(row.get("key"), AppUtil.processHashVariable(row.get("value"), wfAssignment, null, null)));
 
             // Force to use content type from select box
             request.removeHeaders("Content-Type");

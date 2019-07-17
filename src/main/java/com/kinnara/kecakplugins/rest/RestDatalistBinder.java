@@ -18,6 +18,9 @@ import org.joget.apps.datalist.model.*;
 import org.joget.apps.form.model.FormRow;
 import org.joget.apps.form.model.FormRowSet;
 import org.joget.commons.util.LogUtil;
+import org.joget.plugin.property.service.PropertyUtil;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 import javax.annotation.Nonnull;
 import javax.net.ssl.SSLContext;
@@ -27,10 +30,14 @@ import java.io.InputStreamReader;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 import java.util.Map;
+import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * 
@@ -39,9 +46,39 @@ import java.util.regex.Pattern;
  */
 public class RestDatalistBinder extends DataListBinderDefault{
 
+	private String getDefaultPropertyValues(String json) {
+		try {
+			JSONArray pages = new JSONArray(json);
+			JSONObject values = new JSONObject();
+
+			for(int i = 0; i < pages.length(); ++i) {
+				JSONObject page = (JSONObject)pages.get(i);
+				if (page.has("properties")) {
+					JSONArray properties = (JSONArray)page.get("properties");
+
+					for(int j = 0; j < properties.length(); ++j) {
+						JSONObject property = (JSONObject)properties.get(j);
+						if (property.has("value")) {
+							values.put(property.getString("name"), property.get("value"));
+						}
+					}
+				}
+			}
+
+			return values.toString();
+		} catch (Exception var8) {
+			LogUtil.error(getClassName(), var8, json);
+			return "{}";
+		}
+	}
+
+	@Override
 	public DataListColumn[] getColumns() {
+		Map<String, Object> properties = PropertyUtil.getPropertiesValueFromJson(PropertyUtil.getDefaultPropertyValues(getPropertyOptions()));
+		properties.entrySet().stream().peek(e -> LogUtil.info(getClassName(), "Key ["+e.getKey()+"]")).map(e -> e.getKey() + "->" + e.getValue()).forEach(s -> LogUtil.info(getClassName(), "getColumns ["+s+"]"));
+
 		FormRowSet rowSet = executeRequest(1);
-		if(rowSet != null && rowSet.size() > 0) {
+		if(rowSet.size() > 0) {
 			FormRow row = rowSet.get(0);
 			DataListColumn[] columns = new DataListColumn[row.size()];
 			int i = 0;
@@ -54,40 +91,53 @@ public class RestDatalistBinder extends DataListBinderDefault{
 		return null;
 	}
 
+	@Override
 	public String getPrimaryKeyColumnName() {
 		return getPropertyString("primaryKey");
 	}
 
+	@Override
 	public DataListCollection getData(DataList dataList, Map properties, DataListFilterQueryObject[] filterQueryObjects, String sort, Boolean desc, Integer start, Integer rows) {
+		LogUtil.info(getClassName(), "getData properties : " + ((Map<String, Object>)properties).entrySet().stream().map(e -> e.getKey() + "->" + e.getValue()).collect(Collectors.joining(";")));
+		LogUtil.info(getClassName(), "getData getProperties : "+((Map<String, Object>)getProperties()).entrySet().stream().map(e -> e.getKey() + "->" + e.getValue()).collect(Collectors.joining(";")));
 		return executeRequest(0).stream().skip(start).limit(rows)
 				.collect(DataListCollection::new, DataListCollection::add, DataListCollection::addAll);
 	}
 
+	@Override
 	public int getDataTotalRowCount(DataList dataList, Map properties, DataListFilterQueryObject[] filterQueryObjects) {
+		LogUtil.info(getClassName(), "getDataTotalRowCount properties : " + ((Map<String, Object>)properties).entrySet().stream().map(e -> e.getKey() + "->" + e.getValue()).collect(Collectors.joining(";")));
+		LogUtil.info(getClassName(), "getDataTotalRowCount getProperties : "+((Map<String, Object>)getProperties()).entrySet().stream().map(e -> e.getKey() + "->" + e.getValue()).collect(Collectors.joining(";")));
 		// TODO : stop this dumb ways
 		return executeRequest(0).size();
 	}
 
+	@Override
 	public String getLabel() {
 		return getName();
 	}
 
+	@Override
 	public String getClassName() {
 		return getClass().getName();
 	}
 
+	@Override
 	public String getPropertyOptions() {
 		return AppUtil.readPluginResource(getClassName(), "/properties/RestDataListBinder.json", null, true, "message/RestDataListBinder");
 	}
 
+	@Override
 	public String getName() {
         return "REST DataList Binder";
     }
 
+	@Override
     public String getVersion() {
         return getClass().getPackage().getImplementationVersion();
     }
 
+	@Override
     public String getDescription() {
     	return "Artifact ID : " + getClass().getPackage().getImplementationTitle();
     } 
@@ -118,17 +168,18 @@ public class RestDatalistBinder extends DataListBinderDefault{
 				client = HttpClientBuilder.create().build();
 			}
 
-            HttpRequestBase request = new HttpGet(url);
-            
-            // persiapkan HTTP header
-            Object[] headers = (Object[]) getProperty("headers");
-            if(headers != null) {
-	            for(Object rowHeader : headers){
-	            	Map<String, String> row = (Map<String, String>) rowHeader;
-	                request.addHeader(row.get("key"), AppUtil.processHashVariable(row.get("value"), null, null, null));
-	            }
-            }
-            
+            final HttpRequestBase request = new HttpGet(url);
+
+			// persiapkan HTTP header
+			Optional.ofNullable(getProperty("headers"))
+					.map(o -> (Object[])o)
+					.map(Arrays::stream)
+					.orElse(Stream.empty())
+					.map(o -> (Map<String, String>)o)
+					.peek(row -> LogUtil.info(getClassName(), "Header ["+row.get("key")+"] ["+AppUtil.processHashVariable(row.get("value"), null, null, null)+"]"))
+					.filter(r -> !String.valueOf(r.get("key")).trim().isEmpty())
+					.forEach(row -> request.addHeader(row.get("key"), AppUtil.processHashVariable(row.get("value"), null, null, null)));
+
             // kirim request ke server
             HttpResponse response = client.execute(request);
             String responseContentType = response.getEntity().getContentType().getValue();
@@ -151,14 +202,11 @@ public class RestDatalistBinder extends DataListBinderDefault{
             } else if(responseContentType.contains("application/xml") || responseContentType.contains("text/xml")) {
 				LogUtil.warn(getClassName(), "Content Type [" + responseContentType.toString() + "] is not supported");				
             } else {
-            	BufferedReader br = new BufferedReader(new InputStreamReader(response.getEntity().getContent()));
-                StringBuilder sb = new StringBuilder();
-                String line;
-                while((line = br.readLine()) != null) {
-                	sb.append(line);
-                }
-                LogUtil.warn(getClassName(), "Not supported yet");
-                LogUtil.warn(getClassName(), sb.toString());
+            	try(BufferedReader br = new BufferedReader(new InputStreamReader(response.getEntity().getContent()))) {
+					String responseBody = br.lines().collect(Collectors.joining());
+					LogUtil.warn(getClassName(), "Not supported yet");
+					LogUtil.warn(getClassName(), responseBody);
+				}
             }
             
         } catch (IOException | NoSuchAlgorithmException | KeyStoreException | KeyManagementException ex) {

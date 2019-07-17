@@ -75,7 +75,7 @@
 		title : '@@resttool.editresponse@@',
 		properties : [
 			{
-				name : 'responseBody',
+				name : 'mapresponsetovariable',
 				label : '@@resttool.mapresponsetovariable@@',
 				type : 'grid',
 				columns : [

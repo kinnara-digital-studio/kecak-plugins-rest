@@ -38,11 +38,13 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * 
@@ -111,15 +113,14 @@ public class RestOptionsBinder extends FormBinder implements FormLoadOptionsBind
             HttpRequestBase request = new HttpGet(url);
             
             // persiapkan HTTP header
-            Object[] headers = (Object[]) getProperty("headers");
-            if(headers != null) {
-                for (Object rowHeader : headers) {
-                    Map<String, String> row = (Map<String, String>) rowHeader;
+			Optional.ofNullable(getProperty("headers"))
+					.map(o -> (Object[])o)
+					.map(Arrays::stream)
+					.orElse(Stream.empty())
+					.map(o -> (Map<String, String>)o)
+					.filter(r -> !String.valueOf(r.get("key")).trim().isEmpty())
+					.forEach(row -> request.addHeader(row.get("key"), AppUtil.processHashVariable(row.get("value"), wfAssignment, null, null)));
 
-                    request.addHeader(row.get("key"), AppUtil.processHashVariable(row.get("value"), wfAssignment, null, null));
-                }
-            }
-            
             // kirim request ke server
             HttpResponse response = client.execute(request);
 

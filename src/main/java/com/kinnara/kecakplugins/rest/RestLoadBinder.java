@@ -37,8 +37,10 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class RestLoadBinder extends FormBinder implements FormLoadElementBinder {
 	private String LABEL = "REST Load Binder";
@@ -112,13 +114,14 @@ public class RestLoadBinder extends FormBinder implements FormLoadElementBinder 
 			LogUtil.info(getClassName(), "url ["+url+"]");
             HttpRequestBase request = new HttpGet(url);
 
-            // persiapkan HTTP header
-            Object[] headers = (Object[]) getProperty("headers");
-            if(headers != null)
-	            for(Object rowHeader : headers){
-	            	Map<String, String> row = (Map<String, String>) rowHeader;
-	                request.addHeader(row.get("key"), AppUtil.processHashVariable(row.get("value"), wfAssignment, null, null));
-	            }
+            // persiapkan HTTP Header
+			Optional.ofNullable(getProperty("headers"))
+					.map(o -> (Object[])o)
+					.map(Arrays::stream)
+					.orElse(Stream.empty())
+					.map(o -> (Map<String, String>)o)
+					.filter(r -> !String.valueOf(r.get("key")).trim().isEmpty())
+					.forEach(row -> request.addHeader(row.get("key"), AppUtil.processHashVariable(row.get("value"), wfAssignment, null, null)));
 
             // kirim request ke server
             HttpResponse response = client.execute(request);

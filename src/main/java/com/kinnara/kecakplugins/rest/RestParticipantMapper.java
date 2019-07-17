@@ -5,12 +5,11 @@ import java.io.InputStreamReader;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Map;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 import javax.net.ssl.SSLContext;
 
@@ -72,13 +71,13 @@ public class RestParticipantMapper extends DefaultParticipantPlugin{
 			HttpRequestBase request = new HttpGet(url);
 
 			// persiapkan HTTP header
-			Object[] headers = (Object[]) getProperty("headers");
-			if(headers != null) {
-				for(Object rowHeader : headers){
-					Map<String, String> row = (Map<String, String>) rowHeader;
-					request.addHeader(row.get("key"), AppUtil.processHashVariable(row.get("value"), null, null, null));
-				}
-			}
+			Optional.ofNullable(getProperty("headers"))
+					.map(o -> (Object[])o)
+					.map(Arrays::stream)
+					.orElse(Stream.empty())
+					.map(o -> (Map<String, String>)o)
+					.filter(r -> !String.valueOf(r.get("key")).trim().isEmpty())
+					.forEach(row -> request.addHeader(row.get("key"), AppUtil.processHashVariable(row.get("value"), null, null, null)));
 
 			// kirim request ke server
 			HttpResponse response = client.execute(request);

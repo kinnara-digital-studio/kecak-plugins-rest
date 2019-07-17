@@ -39,9 +39,11 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  *
@@ -87,30 +89,34 @@ public class RestTool extends DefaultApplicationPlugin{
 			WorkflowManager workflowManager = (WorkflowManager)appContext.getBean("workflowManager");
 			WorkflowAssignment wfAssignment = (WorkflowAssignment) properties.get("workflowAssignment");
 
-			String url = AppUtil.processHashVariable(getPropertyString("url"), wfAssignment, null, null).replaceAll("#", ":");
+			final String url = AppUtil.processHashVariable(getPropertyString("url"), wfAssignment, null, null).replaceAll("#", ":");
 			String method = String.valueOf(properties.get("method"));
 			String statusCodeworkflowVariable = String.valueOf(properties.get("statusCodeworkflowVariable"));
 			String contentType = String.valueOf(properties.get("contentType"));
 			String body = AppUtil.processHashVariable(getPropertyString("body"), wfAssignment, null, null);
-			boolean debug = "true".equalsIgnoreCase(String.valueOf(properties.get("debug")));
+			final boolean debug = "true".equalsIgnoreCase(String.valueOf(properties.get("debug")));
 
 			// Parameters
 			Pattern p = Pattern.compile("https{0,1}://.+\\?.+=,*");
-			Object[] parameters = (Object[]) getProperty("parameters");
-			for(Object parameter : parameters) {
-				Map<String, String> row = (Map<String, String>)parameter;
+			final Matcher m = p.matcher(url.trim());
 
-				// inflate hash variables
-				String value = AppUtil.processHashVariable(row.get("value"), wfAssignment, null, null);
+			final StringBuilder sb = new StringBuilder().append(url);
+			Optional.ofNullable(properties.get("parameters"))
+					.map(o -> (Object[])o)
+					.map(Arrays::stream)
+					.orElse(Stream.empty())
+					.map(o -> (Map<String, String>)o)
+					.forEach(row -> {
+						// inflate hash variables
+						String value = AppUtil.processHashVariable(row.get("value"), wfAssignment, null, null);
 
-				// if url already contains parameters, use &
-				Matcher m = p.matcher(url.trim());
-				try {
-					url += String.format("%s%s=%s", m.find() ? "&" : "?" ,row.get("key"), URLEncoder.encode(value, "UTF-8"));
-				} catch (UnsupportedEncodingException e) {
-					LogUtil.error(getClassName(), e, e.getMessage());
-				}
-			}
+						// if url already contains parameters, use &
+						try {
+							sb.append(String.format("%s%s=%s", m.find() ? "&" : "?" ,row.get("key"), URLEncoder.encode(value, "UTF-8")));
+						} catch (UnsupportedEncodingException e) {
+							LogUtil.error(getClassName(), e, e.getMessage());
+						}
+					});
 
 			HttpClient client;
 			if("true".equalsIgnoreCase(getPropertyString("ignoreCertificateError"))) {
@@ -125,23 +131,25 @@ public class RestTool extends DefaultApplicationPlugin{
 
 			HttpRequestBase request;
 			if("GET".equals(method)) {
-				request = new HttpGet(url);
+				request = new HttpGet(sb.toString());
 			} else if("POST".equals(method)) {
-				request = new HttpPost(url);
+				request = new HttpPost(sb.toString());
 			} else if("PUT".equals(method)) {
-				request = new HttpPut(url);
+				request = new HttpPut(sb.toString());
 			} else if("DELETE".equals(method)) {
-				request = new HttpDelete(url);
+				request = new HttpDelete(sb.toString());
 			} else {
 				LogUtil.warn(getClassName(), "Terminating : Method [" + method + "] not supported");
 				return null;
 			}
 
-			Object[] headers = (Object[]) properties.get("headers");
-			for(Object rowHeader : headers) {
-				Map<String, String> row = (Map<String, String>) rowHeader;
-				request.addHeader(row.get("key"), AppUtil.processHashVariable(row.get("value"), wfAssignment, null, null));
-			}
+			Optional.ofNullable(getProperty("headers"))
+					.map(o -> (Object[])o)
+					.map(Arrays::stream)
+					.orElse(Stream.empty())
+					.map(o -> (Map<String, String>)o)
+					.filter(r -> !String.valueOf(r.get("key")).trim().isEmpty())
+					.forEach(row -> request.addHeader(row.get("key"), AppUtil.processHashVariable(row.get("value"), wfAssignment, null, null)));
 
 			// Force to use content type from select box
 			request.removeHeaders("Content-Type");
@@ -154,106 +162,115 @@ public class RestTool extends DefaultApplicationPlugin{
 			try {
 				if(debug) {
 					LogUtil.info(getClassName(), "REQUEST DETAILS : ");
-					LogUtil.info(getClassName(), "METHOD ["+request.getMethod()+"]");
-					LogUtil.info(getClassName(), "URI ["+request.getURI().toString()+"]");
-					Arrays.stream(request.getAllHeaders()).forEach(h -> LogUtil.info(getClassName(), "HEADER ["+h.getName()+"] ["+h.getValue()+"]"));
+					LogUtil.info(getClassName(), "REQUEST METHOD ["+request.getMethod()+"]");
+					LogUtil.info(getClassName(), "REQUEST URI ["+request.getURI().toString()+"]");
+					Arrays.stream(request.getAllHeaders()).forEach(h -> LogUtil.info(getClassName(), "REQUEST HEADER ["+h.getName()+"] ["+h.getValue()+"]"));
 				}
 
 				HttpResponse response = client.execute(request);
-
-				if(debug) {
-					LogUtil.info(getClassName(), "Sending [" + method + "] request to : [" + url + "]");
-				}
-
 				HttpEntity entity = response.getEntity();
 
 				if(entity == null) {
-					LogUtil.info(getClassName(), "Response : NULL");
+					LogUtil.warn(getClassName(), "Empty response");
 					return null;
 				}
 
 				String responseContentType = entity.getContentType().getValue();
 
+				int statusCode = response.getStatusLine().getStatusCode();
+				LogUtil.info(getClassName(), "Response Status Code ["+statusCode+"]");
+
 				try(BufferedReader br = new BufferedReader(new InputStreamReader(response.getEntity().getContent()))) {
+					String responseBody = br.lines().collect(Collectors.joining());
 
 					if(debug) {
-						LogUtil.info(getClassName(), "Response : content-type [" + responseContentType + "] body [" + br.lines().collect(Collectors.joining()) + "]");
+						LogUtil.info(getClassName(), "RESPONSE Content-Type [" + responseContentType + "] body [" + responseBody + "]");
 					}
 
-					if(!statusCodeworkflowVariable.isEmpty())
-						workflowManager.processVariable(wfAssignment.getProcessId(), statusCodeworkflowVariable, String.valueOf(response.getStatusLine().getStatusCode()));
+					if(!Optional.ofNullable(statusCodeworkflowVariable).orElse("").isEmpty()) {
+						workflowManager.processVariable(wfAssignment.getProcessId(), statusCodeworkflowVariable, String.valueOf(statusCode));
+					}
 
-					if(responseContentType.contains("application/json")) {
-						JsonParser parser = new JsonParser();
-						JsonElement completeElement = null;
-						try {
-							completeElement = parser.parse(br);
-						} catch (JsonSyntaxException ex) {
-							// do nothing
-							LogUtil.error(getClassName(), ex, ex.getMessage());
-							return null;
-						}
-
-						Object[] responseBody = (Object[])properties.get("responseBody");
-						for(Object rowResponseBody : responseBody) {
-							Map<String, String> row = (Map<String, String>)rowResponseBody;
-							String[] responseVariables = row.get("responseValue").split("\\.");
-							JsonElement currentElement = completeElement;
-							for(String responseVariable : responseVariables) {
-								if(currentElement == null)
-									break;
-
-								currentElement = getJsonResultVariable(responseVariable, currentElement);
-							}
-							if(currentElement != null && currentElement.isJsonPrimitive()) {
-								workflowManager.processVariable(wfAssignment.getProcessId(), row.get("workflowVariable"), currentElement.getAsString());
-							}
-						}
-
-						// Form Binding
-						String formDefId = getPropertyString("formDefId");
-						if(formDefId != null && !formDefId.isEmpty()) {
-							Form form = generateForm(formDefId);
-
-							if(form != null) {
-								try {
-									String recordPath = getPropertyString("jsonRecordPath");
-									Object[] fieldMapping = (Object[])getProperty("fieldMapping");
-
-									Pattern recordPattern = Pattern.compile(recordPath.replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
-									Map<String, Pattern> fieldPattern = new HashMap<String, Pattern>();
-									for(Object o : fieldMapping) {
-										Map<String, String> mapping = (Map<String, String>)o;
-										Pattern pattern = Pattern.compile(mapping.get("jsonPath").replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
-										fieldPattern.put(mapping.get("formField").toString(), pattern);
-									}
-
-									AppService appService = (AppService)appContext.getBean("appService");
-									FormRowSet result = new FormRowSet();
-									String primaryKey = appService.getOriginProcessId(wfAssignment.getProcessId());
-									parseJson("", completeElement, recordPattern, fieldPattern, true, result, null, getPropertyString("foreignKey"), primaryKey);
-
-									if(debug) {
-										result.stream()
-												.peek(r -> LogUtil.info(getClassName(), "-------Row Set-------"))
-												.flatMap(r -> r.entrySet().stream())
-												.forEach(e -> LogUtil.info(getClassName(), "key ["+ e.getKey()+"] value ["+e.getValue()+"]"));
-									}
-
-									// save data to form
-									form.getStoreBinder().store(form, result, new FormData());
-								} catch (JsonSyntaxException ex) {
-									LogUtil.error(getClassName(), ex, ex.getMessage());
-								}
-							} else {
-								LogUtil.warn(getClassName(), "Error generating form [" + formDefId + "]");
-							}
-						}
-
-					} else {
+					if(!responseContentType.contains("application/json")) {
 						LogUtil.warn(getClassName(), "URL [" + request.getURI().toString()
-								+ "] Response Content-Type : [" + responseContentType + "] not supported [" + br.lines().collect(Collectors.joining()) + "]");
+								+ "] Response Content-Type : [" + responseContentType + "] not supported [" + responseBody + "]");
 
+						return null;
+					}
+
+					JsonParser parser = new JsonParser();
+					JsonElement completeElement;
+					try {
+						completeElement = parser.parse(responseBody);
+					} catch (JsonSyntaxException ex) {
+						// do nothing
+						LogUtil.error(getClassName(), ex, ex.getMessage());
+						return null;
+					}
+
+					Optional.ofNullable(properties.get("mapresponsetovariable"))
+							.map(o -> (Object[])o)
+							.map(Arrays::stream)
+							.orElse(Stream.empty())
+							.map(o -> (Map<String, String>)o)
+							.forEach(row -> {
+								String[] responseVariables = row.get("responseValue").split("\\.");
+
+								JsonElement currentElement = completeElement;
+								for(String responseVariable : responseVariables) {
+									if(currentElement == null)
+										break;
+
+									currentElement = getJsonResultVariable(responseVariable, currentElement);
+								}
+
+								if(currentElement != null && currentElement.isJsonPrimitive()) {
+									if(debug)
+										LogUtil.info(getClassName(), "Setting workflow variable ["+row.get("workflowVariable")+"] with ["+currentElement.getAsString()+"]");
+									workflowManager.processVariable(wfAssignment.getProcessId(), row.get("workflowVariable"), currentElement.getAsString());
+								}
+							});
+
+					// Form Binding
+					String formDefId = getPropertyString("formDefId");
+					if(formDefId == null || formDefId.isEmpty()) {
+						return null;
+					}
+
+					Form form = generateForm(formDefId);
+					if(form == null) {
+						LogUtil.warn(getClassName(), "Error generating form [" + formDefId + "]");
+						return null;
+					}
+
+					try {
+						String recordPath = getPropertyString("jsonRecordPath");
+						Object[] fieldMapping = (Object[])getProperty("fieldMapping");
+
+						Pattern recordPattern = Pattern.compile(recordPath.replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
+						Map<String, Pattern> fieldPattern = new HashMap<String, Pattern>();
+						for(Object o : fieldMapping) {
+							Map<String, String> mapping = (Map<String, String>)o;
+							Pattern pattern = Pattern.compile(mapping.get("jsonPath").replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
+							fieldPattern.put(mapping.get("formField"), pattern);
+						}
+
+						AppService appService = (AppService)appContext.getBean("appService");
+						FormRowSet result = new FormRowSet();
+						String primaryKey = appService.getOriginProcessId(wfAssignment.getProcessId());
+						parseJson("", completeElement, recordPattern, fieldPattern, true, result, null, getPropertyString("foreignKey"), primaryKey);
+
+						if(debug) {
+							result.stream()
+									.peek(r -> LogUtil.info(getClassName(), "-------Row Set-------"))
+									.flatMap(r -> r.entrySet().stream())
+									.forEach(e -> LogUtil.info(getClassName(), "key ["+ e.getKey()+"] value ["+e.getValue()+"]"));
+						}
+
+						// save data to form
+						form.getStoreBinder().store(form, result, new FormData());
+					} catch (JsonSyntaxException ex) {
+						LogUtil.error(getClassName(), ex, ex.getMessage());
 					}
 				}
 			} catch (IOException e) {
@@ -262,6 +279,7 @@ public class RestTool extends DefaultApplicationPlugin{
 		} catch (NoSuchAlgorithmException | KeyStoreException | KeyManagementException ex) {
 			LogUtil.error(getClassName(), ex, ex.getMessage());
 		}
+
 		return null;
 	}
 
