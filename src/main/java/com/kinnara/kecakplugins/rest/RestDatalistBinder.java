@@ -192,6 +192,7 @@ public class RestDatalistBinder extends DataListBinderDefault{
             // kirim request ke server
             HttpResponse response = client.execute(request);
             String responseContentType = response.getEntity().getContentType().getValue();
+            LogUtil.info(getClassName(), "Response status code ["+response.getStatusLine().getStatusCode()+"]");
             
             // get properties
 			String recordPath = getPropertyString("recordPath");
