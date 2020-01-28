@@ -18,7 +18,6 @@ import org.joget.apps.datalist.model.*;
 import org.joget.apps.form.model.FormRow;
 import org.joget.apps.form.model.FormRowSet;
 import org.joget.commons.util.LogUtil;
-import org.joget.plugin.property.service.PropertyUtil;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -30,11 +29,10 @@ import java.io.InputStreamReader;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
-import java.util.Arrays;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -74,10 +72,9 @@ public class RestDatalistBinder extends DataListBinderDefault{
 
 	@Override
 	public DataListColumn[] getColumns() {
-		Map<String, Object> properties = PropertyUtil.getPropertiesValueFromJson(PropertyUtil.getDefaultPropertyValues(getPropertyOptions()));
-		properties.entrySet().stream().peek(e -> LogUtil.info(getClassName(), "Key ["+e.getKey()+"]")).map(e -> e.getKey() + "->" + e.getValue()).forEach(s -> LogUtil.info(getClassName(), "getColumns ["+s+"]"));
+		Object[] headers = getUnformattedGridProperty("headers");
 
-		FormRowSet rowSet = executeRequest(1);
+		FormRowSet rowSet = executeRequest(1, headers);
 		if(rowSet.size() > 0) {
 			FormRow row = rowSet.get(0);
 			DataListColumn[] columns = new DataListColumn[row.size()];
@@ -91,6 +88,28 @@ public class RestDatalistBinder extends DataListBinderDefault{
 		return null;
 	}
 
+	private Object[] getUnformattedGridProperty(String propertyName) {
+		List<Map<String, Object>> result = new ArrayList<>();
+		int i = 0;
+		Object key;
+		Object value;
+		do {
+			Map<String, Object> gridRow = new HashMap<>();
+
+			key = getProperties().get(propertyName + "[" + i + "][key]");
+			value = getProperties().get(propertyName + "[" + i + "][value]");
+
+			if(key != null && value != null) {
+				gridRow.put("key", String.valueOf(key));
+				gridRow.put("value", value);
+				result.add(gridRow);
+			}
+			i++;
+		} while(key != null);
+
+		return result.toArray();
+	}
+
 	@Override
 	public String getPrimaryKeyColumnName() {
 		return getPropertyString("primaryKey");
@@ -98,18 +117,14 @@ public class RestDatalistBinder extends DataListBinderDefault{
 
 	@Override
 	public DataListCollection getData(DataList dataList, Map properties, DataListFilterQueryObject[] filterQueryObjects, String sort, Boolean desc, Integer start, Integer rows) {
-		LogUtil.info(getClassName(), "getData properties : " + ((Map<String, Object>)properties).entrySet().stream().map(e -> e.getKey() + "->" + e.getValue()).collect(Collectors.joining(";")));
-		LogUtil.info(getClassName(), "getData getProperties : "+((Map<String, Object>)getProperties()).entrySet().stream().map(e -> e.getKey() + "->" + e.getValue()).collect(Collectors.joining(";")));
-		return executeRequest(0).stream().skip(start).limit(rows)
+		return executeRequest(0, (Object[]) getProperty("headers")).stream().skip(start).limit(rows)
 				.collect(DataListCollection::new, DataListCollection::add, DataListCollection::addAll);
 	}
 
 	@Override
 	public int getDataTotalRowCount(DataList dataList, Map properties, DataListFilterQueryObject[] filterQueryObjects) {
-		LogUtil.info(getClassName(), "getDataTotalRowCount properties : " + ((Map<String, Object>)properties).entrySet().stream().map(e -> e.getKey() + "->" + e.getValue()).collect(Collectors.joining(";")));
-		LogUtil.info(getClassName(), "getDataTotalRowCount getProperties : "+((Map<String, Object>)getProperties()).entrySet().stream().map(e -> e.getKey() + "->" + e.getValue()).collect(Collectors.joining(";")));
 		// TODO : stop this dumb ways
-		return executeRequest(0).size();
+		return executeRequest(0, (Object[]) getProperty("headers")).size();
 	}
 
 	@Override
@@ -143,7 +158,7 @@ public class RestDatalistBinder extends DataListBinderDefault{
     } 
 
     @Nonnull
-    private FormRowSet executeRequest(int limit) {
+    private FormRowSet executeRequest(int limit, Object[] headersProperty) {
         try {            
             String url = AppUtil.processHashVariable(getPropertyString("url"), null, null, null);
             
@@ -170,15 +185,9 @@ public class RestDatalistBinder extends DataListBinderDefault{
 
             final HttpRequestBase request = new HttpGet(url);
 
-			// persiapkan HTTP header
-			Optional.ofNullable(getProperty("headers"))
-					.map(o -> (Object[])o)
-					.map(Arrays::stream)
-					.orElse(Stream.empty())
-					.map(o -> (Map<String, String>)o)
-					.peek(row -> LogUtil.info(getClassName(), "Header ["+row.get("key")+"] ["+AppUtil.processHashVariable(row.get("value"), null, null, null)+"]"))
-					.filter(r -> !String.valueOf(r.get("key")).trim().isEmpty())
-					.forEach(row -> request.addHeader(row.get("key"), AppUtil.processHashVariable(row.get("value"), null, null, null)));
+			// prepare HTTP header
+			Map<String, Object> headers = getGridProperty(headersProperty);
+			headers.forEach((k, v) -> request.addHeader(k, AppUtil.processHashVariable(String.valueOf(v), null, null, null)));
 
             // kirim request ke server
             HttpResponse response = client.execute(request);
@@ -200,7 +209,7 @@ public class RestDatalistBinder extends DataListBinderDefault{
 					LogUtil.error(getClassName(), ex, ex.getMessage());
 				}
             } else if(responseContentType.contains("application/xml") || responseContentType.contains("text/xml")) {
-				LogUtil.warn(getClassName(), "Content Type [" + responseContentType.toString() + "] is not supported");				
+				LogUtil.warn(getClassName(), "Content Type [" + responseContentType + "] is not supported");
             } else {
             	try(BufferedReader br = new BufferedReader(new InputStreamReader(response.getEntity().getContent()))) {
 					String responseBody = br.lines().collect(Collectors.joining());
@@ -214,4 +223,13 @@ public class RestDatalistBinder extends DataListBinderDefault{
         }
         return new FormRowSet();
     }
+
+	private Map<String, Object> getGridProperty(Object[] property) {
+		return Optional.ofNullable(property)
+				.map(Arrays::stream)
+				.orElse(Stream.empty())
+				.map(o -> (Map<String, String>)o)
+				.filter(r -> !String.valueOf(r.get("key")).trim().isEmpty())
+				.collect(HashMap::new, (hashMap, stringStringMap) -> hashMap.put(stringStringMap.get("key"), stringStringMap.get("value")), Map::putAll);
+	}
 }
