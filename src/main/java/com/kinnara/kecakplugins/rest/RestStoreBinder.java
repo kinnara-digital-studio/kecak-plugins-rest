@@ -15,7 +15,6 @@ import org.joget.commons.util.LogUtil;
 import org.joget.workflow.model.WorkflowAssignment;
 import org.joget.workflow.model.service.WorkflowManager;
 import org.springframework.context.ApplicationContext;
-import sun.rmi.runtime.Log;
 
 import javax.net.ssl.SSLContext;
 import java.io.IOException;
@@ -23,8 +22,10 @@ import java.io.UnsupportedEncodingException;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
-import java.util.*;
-import java.util.regex.Pattern;
+import java.util.Arrays;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 

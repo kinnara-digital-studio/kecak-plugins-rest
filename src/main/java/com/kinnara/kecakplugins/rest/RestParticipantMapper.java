@@ -1,18 +1,11 @@
 package com.kinnara.kecakplugins.rest;
 
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.security.KeyManagementException;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.util.*;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import java.util.regex.Pattern;
-import java.util.stream.Stream;
-
-import javax.net.ssl.SSLContext;
-
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.google.gson.stream.JsonReader;
+import com.kinnara.kecakplugins.rest.commons.JsonHandler;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
@@ -24,17 +17,18 @@ import org.apache.http.ssl.SSLContextBuilder;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.form.model.FormRowSet;
 import org.joget.commons.util.LogUtil;
-import org.joget.directory.model.User;
 import org.joget.directory.model.service.DirectoryManager;
 import org.joget.workflow.model.DefaultParticipantPlugin;
-import org.mozilla.universalchardet.prober.statemachine.ISO2022JPSMModel;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import com.google.gson.stream.JsonReader;
-import com.kinnara.kecakplugins.rest.commons.JsonHandler;
+import javax.net.ssl.SSLContext;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.security.KeyManagementException;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.util.*;
+import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 public class RestParticipantMapper extends DefaultParticipantPlugin{
 	private final static String LABEL = "REST Participant Mapping";
