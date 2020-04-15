@@ -97,7 +97,7 @@ public class RestOptionsBinder extends FormBinder implements FormLoadOptionsBind
 			}
 
             HttpClient client;
-            if("true".equalsIgnoreCase(getPropertyString("ignoreCertificateError"))) {
+				if(isIgnoreCertificateError()) {
                 SSLContext sslContext = new SSLContextBuilder()
                         .loadTrustMaterial(null, (certificate, authType) -> true).build();
                 client = HttpClients.custom().setSSLContext(sslContext)
@@ -143,7 +143,7 @@ public class RestOptionsBinder extends FormBinder implements FormLoadOptionsBind
 			Pattern labelPattern = Pattern.compile(labelPath.replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
 			Pattern groupPattern = Pattern.compile(groupPath.replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
 			
-            if(responseContentType.contains("application/json")) {
+            if(responseContentType.contains("json")) {
 				JsonParser parser = new JsonParser();
 				try(JsonReader reader = new JsonReader(new InputStreamReader(response.getEntity().getContent()))) {
 					JsonElement element = parser.parse(reader);
@@ -158,7 +158,7 @@ public class RestOptionsBinder extends FormBinder implements FormLoadOptionsBind
 				} catch (JsonSyntaxException ex) {
 					LogUtil.error(getClassName(), ex, ex.getMessage());
 				}
-            } else if(responseContentType.contains("application/xml") || responseContentType.contains("text/xml")) {
+            } else if(responseContentType.contains("xml")) {
 				try {					
 					FormRowSet result = new FormRowSet();
 					SAXParserFactory factory = SAXParserFactory.newInstance();
@@ -177,7 +177,8 @@ public class RestOptionsBinder extends FormBinder implements FormLoadOptionsBind
 				}
 
 			} else {
-            	try(BufferedReader br = new BufferedReader(new InputStreamReader(response.getEntity().getContent()))) {
+				LogUtil.warn(getClassName(), "Unsupported content type [" + responseContentType + "]");
+				try(BufferedReader br = new BufferedReader(new InputStreamReader(response.getEntity().getContent()))) {
 					String lines = br.lines().collect(Collectors.joining());
 					LogUtil.info(getClassName(), "Response ["+lines+"]");
 				}
@@ -188,8 +189,17 @@ public class RestOptionsBinder extends FormBinder implements FormLoadOptionsBind
         }
         return null;
     }
-    
-    private class OptionsBinderSaxHandler extends DefaultXmlSaxHandler {
+
+	/**
+	 * Property "ignoreCertificateError"
+	 *
+	 * @return
+	 */
+	private boolean isIgnoreCertificateError() {
+    	return "true".equalsIgnoreCase(getPropertyString("ignoreCertificateError"));
+	}
+
+	private class OptionsBinderSaxHandler extends DefaultXmlSaxHandler {
     	private FormRowSet rowSet;
     	private FormRow row;
     	private Pattern valuePattern;

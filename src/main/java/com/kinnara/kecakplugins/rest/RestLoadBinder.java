@@ -101,7 +101,7 @@ public class RestLoadBinder extends FormBinder implements FormLoadElementBinder 
 			url = url.replaceAll(":id", primaryKey);
 
 			HttpClient client;
-			if("true".equalsIgnoreCase(getPropertyString("ignoreCertificateError"))) {
+			if(isIgnoreCertificateError()) {
 				SSLContext sslContext = new SSLContextBuilder()
 						.loadTrustMaterial(null, (certificate, authType) -> true).build();
 				client = HttpClients.custom().setSSLContext(sslContext)
@@ -137,7 +137,7 @@ public class RestLoadBinder extends FormBinder implements FormLoadElementBinder 
 
 			Pattern recordPattern = Pattern.compile(recordPath.replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
 
-            if(responseContentType.contains("application/json")) {
+            if(responseContentType.contains("json")) {
 				JsonParser parser = new JsonParser();
 				try(JsonReader reader = new JsonReader(new InputStreamReader(response.getEntity().getContent()))) {
 					JsonElement element = parser.parse(reader);
@@ -148,7 +148,7 @@ public class RestLoadBinder extends FormBinder implements FormLoadElementBinder 
 				} catch (JsonSyntaxException ex) {
 					LogUtil.error(getClassName(), ex, ex.getMessage());
 				}
-            } else if(responseContentType.contains("application/xml") || responseContentType.contains("text/xml")) {
+            } else if(responseContentType.contains("xml")) {
 				try {
 					FormRowSet result = new FormRowSet();
 					SAXParserFactory factory = SAXParserFactory.newInstance();
@@ -165,8 +165,10 @@ public class RestLoadBinder extends FormBinder implements FormLoadElementBinder 
 				}
 
 			} else {
-            	try(BufferedReader br = new BufferedReader(new InputStreamReader(response.getEntity().getContent()))) {
-					LogUtil.warn(getClassName(), "Response content type [" + responseContentType + "] not supported yet. ["+br.lines().collect(Collectors.joining())+"]");
+				LogUtil.warn(getClassName(), "Unsupported content type [" + responseContentType + "]");
+				try(BufferedReader br = new BufferedReader(new InputStreamReader(response.getEntity().getContent()))) {
+					String lines = br.lines().collect(Collectors.joining());
+					LogUtil.info(getClassName(), "Response ["+lines+"]");
 				}
             }
         } catch (IOException | NoSuchAlgorithmException | KeyStoreException | KeyManagementException e) {
@@ -207,4 +209,12 @@ public class RestLoadBinder extends FormBinder implements FormLoadElementBinder 
 		}
     }
 
+	/**
+	 * Property "ignoreCertificateError"
+	 *
+	 * @return
+	 */
+	private boolean isIgnoreCertificateError() {
+		return "true".equalsIgnoreCase(getPropertyString("ignoreCertificateError"));
+	}
 }

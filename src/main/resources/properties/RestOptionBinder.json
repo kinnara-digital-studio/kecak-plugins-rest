@@ -64,7 +64,7 @@
         ]
     },
     {
-        title : '@@rest.security@@',
+        title : "@@rest.security@@",
         properties : [
             {
                 name : 'ignoreCertificateError',

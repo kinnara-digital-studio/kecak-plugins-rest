@@ -21,6 +21,7 @@ import org.joget.directory.model.service.DirectoryManager;
 import org.joget.workflow.model.DefaultParticipantPlugin;
 
 import javax.net.ssl.SSLContext;
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.security.KeyManagementException;
@@ -28,6 +29,7 @@ import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class RestParticipantMapper extends DefaultParticipantPlugin{
@@ -52,7 +54,7 @@ public class RestParticipantMapper extends DefaultParticipantPlugin{
 			}
 
 			HttpClient client;
-			if("true".equalsIgnoreCase(getPropertyString("ignoreCertificateError"))) {
+			if(isIgnoreCertificateError()) {
 				SSLContext sslContext = new SSLContextBuilder()
 						.loadTrustMaterial(null, (certificate, authType) -> true).build();
 				client = HttpClients.custom().setSSLContext(sslContext)
@@ -81,29 +83,29 @@ public class RestParticipantMapper extends DefaultParticipantPlugin{
 			String recordPath = getPropertyString("recordPath");
 
 			Pattern recordPattern = Pattern.compile(recordPath.replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
-			if(responseContentType.contains("application/json")) {
-				LogUtil.info(getClassName(), "[REST-PARTICIPANT MAPPER JSON]");
+			if(responseContentType.contains("json")) {
 				JsonParser parser = new JsonParser();
 				JsonElement element = parser.parse(new JsonReader(new InputStreamReader(response.getEntity().getContent())));
 				JsonHandler handler = new JsonHandler(element, recordPattern);
 				FormRowSet fRS = handler.parse();
 				if(element.isJsonArray()) {
 					JsonArray jArray = element.getAsJsonArray();
-//					System.out.println("[JSON ARRAY] "+jArray);
 				}else {
 					JsonObject jObj = element.getAsJsonObject();
 					if(jObj.get(getPropertyString("recordPath")).isJsonArray()) {
 						JsonArray arrData = (JsonArray) jObj.get(getPropertyString("recordPath"));
 						for(JsonElement elm: arrData) {
 							JsonObject objAppr = elm.getAsJsonObject();
-//							System.out.println("[APPROVER] "+objAppr.get(getPropertyString("sfieldId")));
 							approver.add(objAppr.get(getPropertyString("sfieldId")).getAsString());
 						}
 					}
-					System.out.println("[JSON OBJECT] "+jObj);
 				}
 			}else {
-				LogUtil.info(getClassName(), "[REST-PARTICIPANT MAPPER NOT JSON]");
+				LogUtil.warn(getClassName(), "Unsupported content type [" + responseContentType + "]");
+				try(BufferedReader br = new BufferedReader(new InputStreamReader(response.getEntity().getContent()))) {
+					String lines = br.lines().collect(Collectors.joining());
+					LogUtil.info(getClassName(), "Response ["+lines+"]");
+				}
 			}
 		} catch (IOException | NoSuchAlgorithmException | KeyStoreException | KeyManagementException ex) {
 			LogUtil.error(this.getClass().getName(), ex,ex.getMessage());
@@ -141,4 +143,12 @@ public class RestParticipantMapper extends DefaultParticipantPlugin{
 		return getClass().getPackage().getImplementationTitle();
 	}
 
+	/**
+	 * Property "ignoreCertificateError"
+	 *
+	 * @return
+	 */
+	private boolean isIgnoreCertificateError() {
+		return "true".equalsIgnoreCase(getPropertyString("ignoreCertificateError"));
+	}
 }
