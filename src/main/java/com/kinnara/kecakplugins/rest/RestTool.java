@@ -97,7 +97,7 @@ public class RestTool extends DefaultApplicationPlugin{
 			final boolean debug = "true".equalsIgnoreCase(String.valueOf(properties.get("debug")));
 
 			// Parameters
-			Pattern p = Pattern.compile("https{0,1}://.+\\?.+=,*");
+			Pattern p = Pattern.compile("https?://.+\\?.+=,*");
 			final Matcher m = p.matcher(url.trim());
 
 			final StringBuilder sb = new StringBuilder().append(url);

@@ -167,7 +167,7 @@ public class RestDatalistBinder extends DataListBinderDefault{
             if(parameters != null) {
 	            for(Object rowParameter : parameters){
 	            	Map<String, String> row = (Map<String, String>) rowParameter;
-	                url += String.format("%s%s=%s", url.trim().matches("https{0,1}://.+\\?.*") ? "&" : "?" ,row.get("key"), row.get("value"));
+	                url += String.format("%s%s=%s", url.trim().matches("https?://.+\\?.*") ? "&" : "?" ,row.get("key"), row.get("value"));
 	            }
             }
 
