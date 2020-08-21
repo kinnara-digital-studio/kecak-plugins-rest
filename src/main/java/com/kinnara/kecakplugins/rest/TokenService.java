@@ -1,5 +1,6 @@
 package com.kinnara.kecakplugins.rest;
 
+import com.kinnara.kecakplugins.rest.exceptions.RestApiException;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jws;
 import io.jsonwebtoken.JwtException;
@@ -48,7 +49,7 @@ public class TokenService {
      * @return Logged-in user based on @param request
      * @throws /Exception
      */
-    public static User getAuthentication (HttpServletRequest request) throws RestApiException  {
+    public static User getAuthentication (HttpServletRequest request) throws RestApiException {
         String session = request.getHeader(HEADER_STRING);
         if (session != null) {
             try {

@@ -1,20 +1,22 @@
 package com.kinnara.kecakplugins.rest;
 
 import com.google.gson.*;
+import com.kinnara.kecakplugins.rest.commons.RestUtils;
+import com.kinnara.kecakplugins.rest.commons.StuffedForm;
+import com.kinnara.kecakplugins.rest.commons.Unclutter;
+import com.kinnara.kecakplugins.rest.exceptions.RestClientException;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.*;
-import org.apache.http.conn.ssl.NoopHostnameVerifier;
+import org.apache.http.client.methods.HttpEntityEnclosingRequestBase;
+import org.apache.http.client.methods.HttpRequestBase;
 import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.ssl.SSLContextBuilder;
 import org.joget.apps.app.dao.FormDefinitionDao;
 import org.joget.apps.app.model.AppDefinition;
 import org.joget.apps.app.model.FormDefinition;
 import org.joget.apps.app.service.AppService;
 import org.joget.apps.app.service.AppUtil;
+import org.joget.apps.form.dao.FormDataDao;
 import org.joget.apps.form.model.Form;
 import org.joget.apps.form.model.FormData;
 import org.joget.apps.form.model.FormRow;
@@ -22,24 +24,19 @@ import org.joget.apps.form.model.FormRowSet;
 import org.joget.apps.form.service.FormService;
 import org.joget.commons.util.LogUtil;
 import org.joget.plugin.base.DefaultApplicationPlugin;
+import org.joget.plugin.base.PluginManager;
 import org.joget.workflow.model.WorkflowAssignment;
 import org.joget.workflow.model.service.WorkflowManager;
 import org.springframework.context.ApplicationContext;
 
 import javax.annotation.Nonnull;
-import javax.net.ssl.SSLContext;
+import javax.annotation.Nullable;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
-import java.security.KeyManagementException;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -50,7 +47,7 @@ import java.util.stream.Stream;
  * @author aristo
  *
  */
-public class RestTool extends DefaultApplicationPlugin{
+public class RestTool extends DefaultApplicationPlugin implements RestUtils, Unclutter {
 	private final static String LABEL = "REST Tool";
 
 	public String getLabel() {
@@ -87,75 +84,48 @@ public class RestTool extends DefaultApplicationPlugin{
 		try {
 			ApplicationContext appContext = AppUtil.getApplicationContext();
 			WorkflowManager workflowManager = (WorkflowManager)appContext.getBean("workflowManager");
+			PluginManager pluginManager = (PluginManager) properties.get("pluginManager");
+			FormDataDao formDataDao = (FormDataDao) pluginManager.getBean("formDataDao");
 			WorkflowAssignment wfAssignment = (WorkflowAssignment) properties.get("workflowAssignment");
 
-			final String url = AppUtil.processHashVariable(getPropertyString("url"), wfAssignment, null, null).replaceAll("#", ":");
+			final String url = String.valueOf(properties.get("url")).replaceAll("#", ":");
 			String method = String.valueOf(properties.get("method"));
 			String statusCodeworkflowVariable = String.valueOf(properties.get("statusCodeworkflowVariable"));
 			String contentType = String.valueOf(properties.get("contentType"));
-			String body = AppUtil.processHashVariable(getPropertyString("body"), wfAssignment, null, null);
-			final boolean debug = "true".equalsIgnoreCase(String.valueOf(properties.get("debug")));
+			String body = String.valueOf(properties.get("body"));
+			final boolean debug = isDebug(properties);
 
 			// Parameters
-			Pattern p = Pattern.compile("https?://.+\\?.+=,*");
-			final Matcher m = p.matcher(url.trim());
+			final Pattern p = Pattern.compile("https?://.+\\?.+=,*");
 
-			final StringBuilder sb = new StringBuilder().append(url);
-			Optional.ofNullable(properties.get("parameters"))
-					.map(o -> (Object[])o)
-					.map(Arrays::stream)
-					.orElse(Stream.empty())
-					.map(o -> (Map<String, String>)o)
-					.forEach(row -> {
-						// inflate hash variables
-						String value = AppUtil.processHashVariable(row.get("value"), wfAssignment, null, null);
+			final StringBuilder urlBuilder = new StringBuilder(url.trim());
+			List<Map<String, String>> parameters = getParameters(properties);
+			parameters.forEach(throwableConsumer(row -> {
+				// inflate hash variables
+				String key = row.get("key");
+				String value = row.get("value");
 
-						// if url already contains parameters, use &
-						try {
-							sb.append(String.format("%s%s=%s", m.find() ? "&" : "?" ,row.get("key"), URLEncoder.encode(value, "UTF-8")));
-						} catch (UnsupportedEncodingException e) {
-							LogUtil.error(getClassName(), e, e.getMessage());
-						}
-					});
+				// if url already contains parameters, use &
+				Matcher m = p.matcher(urlBuilder.toString());
+				urlBuilder.append(String.format("%s%s=%s", m.find() ? "&" : "?" ,key, URLEncoder.encode(value, "UTF-8")));
+			}));
 
-			HttpClient client;
-			if("true".equalsIgnoreCase(getPropertyString("ignoreCertificateError"))) {
-				SSLContext sslContext = new SSLContextBuilder()
-						.loadTrustMaterial(null, (certificate, authType) -> true).build();
-				client = HttpClients.custom().setSSLContext(sslContext)
-						.setSSLHostnameVerifier(new NoopHostnameVerifier())
-						.build();
-			} else {
-				client = HttpClientBuilder.create().build();
-			}
+			HttpClient client = getHttpClient(getIgnoreCertificateError(properties));
+			final HttpRequestBase request = getHttpRequest(urlBuilder.toString(), method);
+			List<Map<String, String>> headers = getHeaders(properties);
+			headers.forEach(throwableConsumer(row -> {
+				// inflate hash variables
+				String key = row.get("key");
+				String value = row.get("value");
 
-			HttpRequestBase request;
-			if("GET".equals(method)) {
-				request = new HttpGet(sb.toString());
-			} else if("POST".equals(method)) {
-				request = new HttpPost(sb.toString());
-			} else if("PUT".equals(method)) {
-				request = new HttpPut(sb.toString());
-			} else if("DELETE".equals(method)) {
-				request = new HttpDelete(sb.toString());
-			} else {
-				LogUtil.warn(getClassName(), "Terminating : Method [" + method + "] not supported");
-				return null;
-			}
-
-			Optional.ofNullable(getProperty("headers"))
-					.map(o -> (Object[])o)
-					.map(Arrays::stream)
-					.orElse(Stream.empty())
-					.map(o -> (Map<String, String>)o)
-					.filter(r -> !String.valueOf(r.get("key")).trim().isEmpty())
-					.forEach(row -> request.addHeader(row.get("key"), AppUtil.processHashVariable(row.get("value"), wfAssignment, null, null)));
+				request.addHeader(key, value);
+			}));
 
 			// Force to use content type from select box
 			request.removeHeaders("Content-Type");
 			request.addHeader("Content-Type", contentType);
 
-			if("POST".equals(method) || "PUT".equals(method)) {
+			if(isNotEmpty(body) && ("POST".equals(method) || "PUT".equals(method))) {
 				setHttpEntity((HttpEntityEnclosingRequestBase) request, body);
 			}
 
@@ -208,12 +178,14 @@ public class RestTool extends DefaultApplicationPlugin{
 						return null;
 					}
 
+					final StuffedForm stuffedForm = getForm(properties);
+					final FormRow formRow = new FormRow();
 					Optional.ofNullable(properties.get("mapresponsetovariable"))
 							.map(o -> (Object[])o)
 							.map(Arrays::stream)
 							.orElse(Stream.empty())
 							.map(o -> (Map<String, String>)o)
-							.forEach(row -> {
+							.forEach(throwableConsumer(row -> {
 								String[] responseVariables = row.get("responseValue").split("\\.");
 
 								JsonElement currentElement = completeElement;
@@ -227,57 +199,67 @@ public class RestTool extends DefaultApplicationPlugin{
 								if(currentElement != null && currentElement.isJsonPrimitive()) {
 									if(debug)
 										LogUtil.info(getClassName(), "Setting workflow variable ["+row.get("workflowVariable")+"] with ["+currentElement.getAsString()+"]");
-									workflowManager.processVariable(wfAssignment.getProcessId(), row.get("workflowVariable"), currentElement.getAsString());
+
+									final String workflowVariable = row.get("workflowVariable");
+									final String value = currentElement.getAsString();
+									workflowManager.processVariable(wfAssignment.getProcessId(), workflowVariable, currentElement.getAsString());
+
+									// Form Binding
+									Optional.ofNullable(stuffedForm)
+											.map(f -> elementStream(f.getForm(), f.getFormData()))
+											.orElseGet(Stream::empty)
+											.filter(e -> workflowVariable.equals(e.getPropertyString("workflowVariable")))
+											.forEach(throwableConsumer(e -> {
+												Objects.requireNonNull(stuffedForm);
+
+												final String elementId = e.getPropertyString("id");
+												formRow.put(elementId, value);
+											}));
 								}
-							});
+							}));
 
-					// Form Binding
-					String formDefId = getPropertyString("formDefId");
-					if(formDefId == null || formDefId.isEmpty()) {
-						return null;
+					if(stuffedForm != null && isNotEmpty(formRow.entrySet())) {
+						final FormRowSet rowSet = new FormRowSet();
+						formRow.setId(stuffedForm.getFormData().getPrimaryKeyValue());
+						rowSet.add(formRow);
+						formDataDao.saveOrUpdate(stuffedForm.getForm(), rowSet);
 					}
 
-					Form form = generateForm(formDefId);
-					if(form == null) {
-						LogUtil.warn(getClassName(), "Error generating form [" + formDefId + "]");
-						return null;
-					}
-
-					try {
-						String recordPath = getPropertyString("jsonRecordPath");
-						Object[] fieldMapping = (Object[])getProperty("fieldMapping");
-
-						Pattern recordPattern = Pattern.compile(recordPath.replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
-						Map<String, Pattern> fieldPattern = new HashMap<String, Pattern>();
-						for(Object o : fieldMapping) {
-							Map<String, String> mapping = (Map<String, String>)o;
-							Pattern pattern = Pattern.compile(mapping.get("jsonPath").replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
-							fieldPattern.put(mapping.get("formField"), pattern);
-						}
-
-						AppService appService = (AppService)appContext.getBean("appService");
-						FormRowSet result = new FormRowSet();
-						String primaryKey = appService.getOriginProcessId(wfAssignment.getProcessId());
-						parseJson("", completeElement, recordPattern, fieldPattern, true, result, null, getPropertyString("foreignKey"), primaryKey);
-
-						if(debug) {
-							result.stream()
-									.peek(r -> LogUtil.info(getClassName(), "-------Row Set-------"))
-									.flatMap(r -> r.entrySet().stream())
-									.forEach(e -> LogUtil.info(getClassName(), "key ["+ e.getKey()+"] value ["+e.getValue()+"]"));
-						}
-
-						// save data to form
-						form.getStoreBinder().store(form, result, new FormData());
-					} catch (JsonSyntaxException ex) {
-						LogUtil.error(getClassName(), ex, ex.getMessage());
-					}
+//					try {
+//						String recordPath = getPropertyString("jsonRecordPath");
+//						Object[] fieldMapping = (Object[])getProperty("fieldMapping");
+//
+//						Pattern recordPattern = Pattern.compile(recordPath.replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
+//						Map<String, Pattern> fieldPattern = new HashMap<String, Pattern>();
+//						for(Object o : fieldMapping) {
+//							Map<String, String> mapping = (Map<String, String>)o;
+//							Pattern pattern = Pattern.compile(mapping.get("jsonPath").replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
+//							fieldPattern.put(mapping.get("formField"), pattern);
+//						}
+//
+//						AppService appService = (AppService)appContext.getBean("appService");
+//						FormRowSet result = new FormRowSet();
+//						String primaryKey = appService.getOriginProcessId(wfAssignment.getProcessId());
+//						parseJson("", completeElement, recordPattern, fieldPattern, true, result, null, getPropertyString("foreignKey"), primaryKey);
+//
+//						if(debug) {
+//							result.stream()
+//									.peek(r -> LogUtil.info(getClassName(), "-------Row Set-------"))
+//									.flatMap(r -> r.entrySet().stream())
+//									.forEach(e -> LogUtil.info(getClassName(), "key ["+ e.getKey()+"] value ["+e.getValue()+"]"));
+//						}
+//
+//						// save data to form
+//						form.getStoreBinder().store(form, result, new FormData());
+//					} catch (JsonSyntaxException ex) {
+//						LogUtil.error(getClassName(), ex, ex.getMessage());
+//					}
 				}
 			} catch (IOException e) {
 				LogUtil.error(getClassName(), e, e.getMessage());
 			}
-		} catch (NoSuchAlgorithmException | KeyStoreException | KeyManagementException ex) {
-			LogUtil.error(getClassName(), ex, ex.getMessage());
+		} catch (RestClientException e) {
+			LogUtil.error(getClassName(), e, e.getMessage());
 		}
 
 		return null;
@@ -348,11 +330,11 @@ public class RestTool extends DefaultApplicationPlugin{
 	 * @param request : POST or PUT request
 	 * @param entity : body content
 	 */
-	private void setHttpEntity(HttpEntityEnclosingRequestBase request, String entity) {
+	private void setHttpEntity(HttpEntityEnclosingRequestBase request, String entity) throws RestClientException {
 		try {
 			request.setEntity(new StringEntity(entity));
 		} catch (UnsupportedEncodingException e) {
-			e.printStackTrace();
+			throw new RestClientException(e);
 		}
 	}
 
@@ -414,5 +396,94 @@ public class RestTool extends DefaultApplicationPlugin{
 			}
 		}
 		return null;
+	}
+
+	/**
+	 * Get property "ignoreCertificateError"
+	 *
+	 * @return
+	 */
+	private boolean getIgnoreCertificateError(Map<String, Object> properties) {
+		return "true".equalsIgnoreCase(String.valueOf(properties.get("ignoreCertificateError")));
+	}
+
+	/**
+	 * Get property "parameters"
+	 *
+	 * @param properties
+	 * @return
+	 */
+	private List<Map<String, String>> getParameters(Map<String, Object> properties) {
+		return getGridProperties(properties, "parameters");
+	}
+
+	/**
+	 * Get property "headers"
+	 *
+	 * @param properties
+	 * @return
+	 */
+	private List<Map<String, String>> getHeaders(Map<String, Object> properties) {
+		return getGridProperties(properties, "headers");
+	}
+
+	private List<Map<String, String>> getGridProperties(Map<String, Object> properties, String propertyName) {
+		return Optional.of(propertyName)
+				.map(properties::get)
+				.filter(o -> o instanceof Object[])
+				.map(o -> (Object[])o)
+				.map(Arrays::stream)
+				.orElseGet(Stream::empty)
+				.filter(o -> o instanceof Map)
+				.map(o -> (Map<String, Object>)o)
+				.map(m -> m.entrySet()
+						.stream()
+						.collect(Collectors.toMap(Map.Entry::getKey, e -> String.valueOf(e.getValue()))))
+				.collect(Collectors.toList());
+	}
+
+
+	/**
+	 * Get property "formDefId"
+	 *
+	 * @param properties
+	 * @return
+	 * @throws RestClientException
+	 */
+	@Nullable
+	private StuffedForm getForm(Map properties) {
+		PluginManager pluginManager = (PluginManager) properties.get("pluginManager");
+		AppDefinition appDefinition = AppUtil.getCurrentAppDefinition();
+		WorkflowAssignment workflowAssignment = (WorkflowAssignment) properties.get("workflowAssignment");
+		AppService appService = (AppService) pluginManager.getBean("appService");
+
+		return Optional.of("formDefId")
+				.map(properties::get)
+				.map(String::valueOf)
+				.map(s -> {
+					FormData formData = new FormData();
+					formData.setPrimaryKeyValue(getPrimaryKey(properties));
+					if(workflowAssignment != null) {
+						formData.setActivityId(workflowAssignment.getActivityId());
+						formData.setProcessId(workflowAssignment.getProcessId());
+					}
+
+					Form form = appService.viewDataForm(appDefinition.getAppId(), appDefinition.getVersion().toString(), s, null, null, null, formData, null, null);
+
+					return Optional.ofNullable(form)
+							.map(f -> new StuffedForm(form, formData))
+							.orElse(null);
+				})
+				.orElse(null);
+	}
+
+	/**
+	 * Get property "debug"
+	 *
+	 * @param properties
+	 * @return
+	 */
+	private boolean isDebug(Map<String, Object> properties) {
+		return "true".equalsIgnoreCase(String.valueOf(properties.get("debug")));
 	}
 }

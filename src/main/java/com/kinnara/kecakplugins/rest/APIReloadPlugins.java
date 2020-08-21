@@ -8,6 +8,7 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import com.kinnara.kecakplugins.rest.exceptions.RestApiException;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.form.model.Element;
 import org.joget.apps.form.model.FormData;

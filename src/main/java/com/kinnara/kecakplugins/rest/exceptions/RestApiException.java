@@ -1,4 +1,4 @@
-package com.kinnara.kecakplugins.rest;
+package com.kinnara.kecakplugins.rest.exceptions;
 
 public class RestApiException extends Exception {
     private int errorCode;
