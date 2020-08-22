@@ -178,14 +178,12 @@ public class RestTool extends DefaultApplicationPlugin implements RestUtils, Unc
 						return null;
 					}
 
-					final StuffedForm stuffedForm = getForm(properties);
-					final FormRow formRow = new FormRow();
 					Optional.ofNullable(properties.get("mapresponsetovariable"))
 							.map(o -> (Object[])o)
 							.map(Arrays::stream)
 							.orElse(Stream.empty())
 							.map(o -> (Map<String, String>)o)
-							.forEach(throwableConsumer(row -> {
+							.forEach(row -> {
 								String[] responseVariables = row.get("responseValue").split("\\.");
 
 								JsonElement currentElement = completeElement;
@@ -199,61 +197,51 @@ public class RestTool extends DefaultApplicationPlugin implements RestUtils, Unc
 								if(currentElement != null && currentElement.isJsonPrimitive()) {
 									if(debug)
 										LogUtil.info(getClassName(), "Setting workflow variable ["+row.get("workflowVariable")+"] with ["+currentElement.getAsString()+"]");
-
-									final String workflowVariable = row.get("workflowVariable");
-									final String value = currentElement.getAsString();
-									workflowManager.processVariable(wfAssignment.getProcessId(), workflowVariable, currentElement.getAsString());
-
-									// Form Binding
-									Optional.ofNullable(stuffedForm)
-											.map(f -> elementStream(f.getForm(), f.getFormData()))
-											.orElseGet(Stream::empty)
-											.filter(e -> workflowVariable.equals(e.getPropertyString("workflowVariable")))
-											.forEach(throwableConsumer(e -> {
-												Objects.requireNonNull(stuffedForm);
-
-												final String elementId = e.getPropertyString("id");
-												formRow.put(elementId, value);
-											}));
+									workflowManager.processVariable(wfAssignment.getProcessId(), row.get("workflowVariable"), currentElement.getAsString());
 								}
-							}));
+							});
 
-					if(stuffedForm != null && isNotEmpty(formRow.entrySet())) {
-						final FormRowSet rowSet = new FormRowSet();
-						formRow.setId(stuffedForm.getFormData().getPrimaryKeyValue());
-						rowSet.add(formRow);
-						formDataDao.saveOrUpdate(stuffedForm.getForm(), rowSet);
+					// Form Binding
+					String formDefId = getPropertyString("formDefId");
+					if(formDefId == null || formDefId.isEmpty()) {
+						return null;
 					}
 
-//					try {
-//						String recordPath = getPropertyString("jsonRecordPath");
-//						Object[] fieldMapping = (Object[])getProperty("fieldMapping");
-//
-//						Pattern recordPattern = Pattern.compile(recordPath.replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
-//						Map<String, Pattern> fieldPattern = new HashMap<String, Pattern>();
-//						for(Object o : fieldMapping) {
-//							Map<String, String> mapping = (Map<String, String>)o;
-//							Pattern pattern = Pattern.compile(mapping.get("jsonPath").replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
-//							fieldPattern.put(mapping.get("formField"), pattern);
-//						}
-//
-//						AppService appService = (AppService)appContext.getBean("appService");
-//						FormRowSet result = new FormRowSet();
-//						String primaryKey = appService.getOriginProcessId(wfAssignment.getProcessId());
-//						parseJson("", completeElement, recordPattern, fieldPattern, true, result, null, getPropertyString("foreignKey"), primaryKey);
-//
-//						if(debug) {
-//							result.stream()
-//									.peek(r -> LogUtil.info(getClassName(), "-------Row Set-------"))
-//									.flatMap(r -> r.entrySet().stream())
-//									.forEach(e -> LogUtil.info(getClassName(), "key ["+ e.getKey()+"] value ["+e.getValue()+"]"));
-//						}
-//
-//						// save data to form
-//						form.getStoreBinder().store(form, result, new FormData());
-//					} catch (JsonSyntaxException ex) {
-//						LogUtil.error(getClassName(), ex, ex.getMessage());
-//					}
+					Form form = generateForm(formDefId);
+					if(form == null) {
+						LogUtil.warn(getClassName(), "Error generating form [" + formDefId + "]");
+						return null;
+					}
+
+					try {
+						String recordPath = getPropertyString("jsonRecordPath");
+						Object[] fieldMapping = (Object[])getProperty("fieldMapping");
+
+						Pattern recordPattern = Pattern.compile(recordPath.replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
+						Map<String, Pattern> fieldPattern = new HashMap<String, Pattern>();
+						for(Object o : fieldMapping) {
+							Map<String, String> mapping = (Map<String, String>)o;
+							Pattern pattern = Pattern.compile(mapping.get("jsonPath").replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
+							fieldPattern.put(mapping.get("formField"), pattern);
+						}
+
+						AppService appService = (AppService)appContext.getBean("appService");
+						FormRowSet result = new FormRowSet();
+						String primaryKey = appService.getOriginProcessId(wfAssignment.getProcessId());
+						parseJson("", completeElement, recordPattern, fieldPattern, true, result, null, getPropertyString("foreignKey"), primaryKey);
+
+						if(debug) {
+							result.stream()
+									.peek(r -> LogUtil.info(getClassName(), "-------Row Set-------"))
+									.flatMap(r -> r.entrySet().stream())
+									.forEach(e -> LogUtil.info(getClassName(), "key ["+ e.getKey()+"] value ["+e.getValue()+"]"));
+						}
+
+						// save data to form
+						form.getStoreBinder().store(form, result, new FormData());
+					} catch (JsonSyntaxException ex) {
+						LogUtil.error(getClassName(), ex, ex.getMessage());
+					}
 				}
 			} catch (IOException e) {
 				LogUtil.error(getClassName(), e, e.getMessage());
@@ -277,7 +265,7 @@ public class RestTool extends DefaultApplicationPlugin implements RestUtils, Unc
 	 * @param foreignKeyField
 	 * @param primaryKey
 	 */
-	private void parseJson(String path, @Nonnull JsonElement element, @Nonnull Pattern recordPattern, @Nonnull Map<String, Pattern> fieldPattern, boolean isLookingForRecordPattern, @Nonnull final FormRowSet rowSet, FormRow row, final String foreignKeyField, final String primaryKey) {
+	private void parseJson(String path, @Nonnull JsonElement element, @Nonnull Pattern recordPattern, @Nonnull Map<String, Pattern> fieldPattern, boolean isLookingForRecordPattern, @Nonnull final FormRowSet rowSet, @Nullable FormRow row, final String foreignKeyField, final String primaryKey) {
 		Matcher matcher = recordPattern.matcher(path);
 		boolean isRecordPath = matcher.find() && isLookingForRecordPattern && element.isJsonObject();
 

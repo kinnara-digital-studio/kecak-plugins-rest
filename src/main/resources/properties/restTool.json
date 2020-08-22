@@ -1,128 +1,152 @@
 [
 	{
-		title : '@@resttool.editrequest@@',
-		properties : [
+		"title" : "@@resttool.editrequest@@",
+		"properties" : [
 			{
-				name : 'url',
-				label : '@@resttool.apiUrl@@',
-				type : 'textfield',
-				required : 'True'
+				"name" : "url",
+				"label" : "@@resttool.apiUrl@@",
+				"type" : "textfield",
+				"required" : "True"
 			}, {
-				name : 'method',
-				label : '@@resttool.method@@',
-				type : 'selectbox',
-				options : [
+				"name" : "method",
+				"label" : "@@resttool.method@@",
+				"type" : "selectbox",
+				"options" : [
 					{
-						value : 'GET',
-						label : 'GET'	
+						"value" : "GET",
+						"label" : "GET"	
 					}, {
-						value : 'POST',
-						label : 'POST'	
+						"value" : "POST",
+						"label" : "POST"	
 					}, {
-						value : 'PUT',
-						label : 'PUT'	
+						"value" : "PUT",
+						"label" : "PUT"	
 					}, {
-						value : 'DELETE',
-						label : 'DELETE'	
+						"value" : "DELETE",
+						"label" : "DELETE"	
 					}
 				]
 			},  {
-				name : 'parameters',
-				label : '@@resttool.parameters@@',
-				type : 'grid',
-				columns : [
-            		{key : 'key', label : '@@resttool.key@@', required : 'true'},
-            		{key : 'value', label : '@@resttool.value@@', required : 'true'}
+				"name" : "parameters",
+				"label" : "@@resttool.parameters@@",
+				"type" : "grid",
+				"columns" : [
+            		{"key" : "key", "label" : "@@resttool.key@@", "required" : "true"},
+            		{"key" : "value", "label" : "@@resttool.value@@", "required" : "true"}
             	]
 			}, {
-				name : 'headers',
-				label : '@@resttool.headers@@',
-				type : 'grid',
-				columns : [
-            		{key : 'key', label : '@@resttool.key@@', required : 'true'},
-            		{key : 'value', label : '@@resttool.value@@', required : 'true'}
+				"name" : "headers",
+				"label" : "@@resttool.headers@@",
+				"type" : "grid",
+				"columns" : [
+            		{"key" : "key", "label" : "@@resttool.key@@", "required" : "true"},
+            		{"key" : "value", "label" : "@@resttool.value@@", "required" : "true"}
             	]
 			}, {
-				name : 'contentType',
-				label : '@@resttool.contentType@@',
-				type : 'selectbox',
-				required : 'true',
-				options : [
+				"name" : "contentType",
+				"label" : "@@resttool.contentType@@",
+				"type" : "selectbox",
+				"required" : "true",
+				"options" : [
 					{
-						value : 'application/json',
-						label : 'application/json'
+						"value" : "application/json",
+						"label" : "application/json"
 					}
 				]
 			}, {
-				name : 'body',
-				label : '@@resttool.body@@',
-				type : 'CodeEditor',
-				mode : 'json',
-				control_field : 'method',
-				control_value : 'POST|PUT',
-				control_use_regex : 'true'
+				"name" : "body",
+				"label" : "@@resttool.body@@",
+				"type" : "CodeEditor",
+				"mode" : "json",
+				"control_field" : "method",
+				"control_value" : "POST|PUT",
+				"control_use_regex" : "true"
 			}
 		]
 	}, {
-		title : '@@resttool.editresponse@@',
-		properties : [
+		"title" : "@@resttool.editresponse@@",
+		"properties" : [
 			{
-				name : 'mapresponsetovariable',
-				label : '@@resttool.mapresponsetovariable@@',
-				type : 'grid',
-				columns : [
+				"name" : "mapresponsetovariable",
+				"label" : "@@resttool.mapresponsetovariable@@",
+				"type" : "grid",
+				"columns" : [
 					{
-						key : 'responseValue',
-						label : '@@resttool.responseValue@@',
-						required : 'true'
+						"key" : "responseValue",
+						"label" : "@@resttool.responseValue@@",
+						"required" : "true"
 					}, {
-						key : 'workflowVariable',
-						label : '@@resttool.workflowVariable@@',
-						required : 'true'
+						"key" : "workflowVariable",
+						"label" : "@@resttool.workflowVariable@@",
+						"required" : "true"
 					}
 				]
 			}, {
-				name : 'statusCodeworkflowVariable',
-				label : '@@resttool.statusCodeworkflowVariable@@',
-				type : 'textfield'
-			},
-			{
-				label : '@@resttool.formBinding@@',
-				type : 'header'
-			},
-			{
-				name : 'formDefId',
-				label : '@@resttool.formDefId@@',
-				type : 'selectbox',
-				description : '@@resttool.formDefId.description@@',
-				options_ajax:'[CONTEXT_PATH]/web/json/console/app[APP_PATH]/forms/options',
-				url : '[CONTEXT_PATH]/web/property/json[APP_PATH]/getPropertyOptions'
+				"name" : "statusCodeworkflowVariable",
+				"label" : "@@resttool.statusCodeworkflowVariable@@",
+				"type" : "textfield"
 			}
+		]
+	}, {
+		"title" : "@@resttool.formBinding@@",
+		"properties" : [
+			{
+            	"name" : "formDefId",
+            	"label" : "@@resttool.formDefId@@",
+            	"type" : "selectbox",
+            	"description" : "@@resttool.formDefId.description@@",
+            	"options_ajax":"[CONTEXT_PATH]/web/json/console/app[APP_PATH]/forms/options",
+            	"url" : "[CONTEXT_PATH]/web/property/json[APP_PATH]/getPropertyOptions"
+            }, {
+            	"name" : "foreignKey",
+            	"label" : "@@resttool.foreignKey@@",
+            	"description" : "@@resttool.foreignKey.description@@",
+            	"type" : "textfield"
+            }, {
+            	"name" : "jsonRecordPath",
+            	"label" : "@@resttool.jsonRecordPath@@",
+            	"type" : "textfield"
+            }, {
+            	"name" : "fieldMapping",
+            	"label" : "@@resttool.fieldMapping@@",
+            	"type" : "grid",
+            	"columns" : [
+            		{
+            			"key" : "jsonPath",
+            			"label" : "@@resttool.jsonPath@@",
+            			"required" : "true"
+            		}, {
+            			"key" : "formField",
+            			"label" : "@@resttool.formField@@",
+            			"required" : "true"
+            		}
+            	]
+            }
 		]
 	},
     {
-        title : '@@resttool.advanceSettings@@',
-        properties : [
+        "title" : "@@resttool.advanceSettings@@",
+        "properties" : [
             {
-                name : 'ignoreCertificateError',
-                label : '@@resttool.ignoreCertificateError@@',
-                type : 'checkbox',
-                options : [
+                "name" : "ignoreCertificateError",
+                "label" : "@@resttool.ignoreCertificateError@@",
+                "type" : "checkbox",
+                "options" : [
                     {
-                        value : 'true',
-                        label : ''
+                        "value" : "true",
+                        "label" : ""
                     }
                 ]
             },
 			{
-				name : 'debug',
-				label : '@@resttool.debug@@',
-				description : '@@resttool.debug.desc@@',
-				type : 'checkbox',
-				options : [
+				"name" : "debug",
+				"label" : "@@resttool.debug@@",
+				"description" : "@@resttool.debug.desc@@",
+				"type" : "checkbox",
+				"options" : [
 					{
-						value : 'true',
-						label : ''
+						"value" : "true",
+						"label" : ""
 					}
 				]
 			}
