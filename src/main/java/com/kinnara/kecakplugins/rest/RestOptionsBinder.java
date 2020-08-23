@@ -7,6 +7,8 @@ import com.google.gson.stream.JsonReader;
 import com.kinnara.kecakplugins.rest.commons.DefaultXmlSaxHandler;
 import com.kinnara.kecakplugins.rest.commons.FieldMatcher;
 import com.kinnara.kecakplugins.rest.commons.JsonHandler;
+import com.kinnara.kecakplugins.rest.commons.RestUtils;
+import com.kinnara.kecakplugins.rest.exceptions.RestClientException;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
@@ -51,7 +53,7 @@ import java.util.stream.Stream;
  * @author aristo
  *
  */
-public class RestOptionsBinder extends FormBinder implements FormLoadOptionsBinder{
+public class RestOptionsBinder extends FormBinder implements FormLoadOptionsBinder, RestUtils {
 	private String LABEL = "REST Option Binder";
 	
     public String getName() {
@@ -96,20 +98,7 @@ public class RestOptionsBinder extends FormBinder implements FormLoadOptionsBind
                         .collect(Collectors.joining("&"));
 			}
 
-            HttpClient client;
-				if(isIgnoreCertificateError()) {
-                SSLContext sslContext = new SSLContextBuilder()
-                        .loadTrustMaterial(null, (certificate, authType) -> true).build();
-                client = HttpClients.custom().setSSLContext(sslContext)
-                        .setSSLHostnameVerifier(new NoopHostnameVerifier())
-                        .build();
-
-                if(client == null)
-                    LogUtil.info(getClassName(), "client is NULL");
-            } else {
-                client = HttpClientBuilder.create().build();
-            }
-
+            HttpClient client = getHttpClient(isIgnoreCertificateError());
             HttpRequestBase request = new HttpGet(url);
             
             // persiapkan HTTP header
@@ -184,7 +173,7 @@ public class RestOptionsBinder extends FormBinder implements FormLoadOptionsBind
 				}
             }
             
-        } catch (IOException | NoSuchAlgorithmException | KeyManagementException | KeyStoreException ex) {
+        } catch (IOException | RestClientException ex) {
             Logger.getLogger(RestOptionsBinder.class.getName()).log(Level.SEVERE, null, ex);
         }
         return null;

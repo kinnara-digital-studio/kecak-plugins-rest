@@ -6,14 +6,12 @@ import com.google.gson.JsonSyntaxException;
 import com.google.gson.stream.JsonReader;
 import com.kinnara.kecakplugins.rest.commons.DefaultXmlSaxHandler;
 import com.kinnara.kecakplugins.rest.commons.JsonHandler;
+import com.kinnara.kecakplugins.rest.commons.RestUtils;
+import com.kinnara.kecakplugins.rest.exceptions.RestClientException;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpRequestBase;
-import org.apache.http.conn.ssl.NoopHostnameVerifier;
-import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.ssl.SSLContextBuilder;
 import org.joget.apps.app.model.AppDefinition;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.form.model.*;
@@ -23,7 +21,6 @@ import org.joget.workflow.model.service.WorkflowManager;
 import org.springframework.context.ApplicationContext;
 import org.xml.sax.SAXException;
 
-import javax.net.ssl.SSLContext;
 import javax.servlet.http.HttpServletResponse;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
@@ -31,9 +28,6 @@ import javax.xml.parsers.SAXParserFactory;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.security.KeyManagementException;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
@@ -42,7 +36,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class RestLoadBinder extends FormBinder implements FormLoadElementBinder {
+public class RestLoadBinder extends FormBinder implements FormLoadElementBinder, RestUtils {
 	private String LABEL = "REST Load Binder";
 
     public String getName() {
@@ -100,17 +94,7 @@ public class RestLoadBinder extends FormBinder implements FormLoadElementBinder 
 
 			url = url.replaceAll(":id", primaryKey);
 
-			HttpClient client;
-			if(isIgnoreCertificateError()) {
-				SSLContext sslContext = new SSLContextBuilder()
-						.loadTrustMaterial(null, (certificate, authType) -> true).build();
-				client = HttpClients.custom().setSSLContext(sslContext)
-						.setSSLHostnameVerifier(new NoopHostnameVerifier())
-						.build();
-			} else {
-				client = HttpClientBuilder.create().build();
-			}
-
+			HttpClient client = getHttpClient(isIgnoreCertificateError());
 			LogUtil.info(getClassName(), "url ["+url+"]");
             HttpRequestBase request = new HttpGet(url);
 
@@ -171,7 +155,7 @@ public class RestLoadBinder extends FormBinder implements FormLoadElementBinder 
 					LogUtil.info(getClassName(), "Response ["+lines+"]");
 				}
             }
-        } catch (IOException | NoSuchAlgorithmException | KeyStoreException | KeyManagementException e) {
+        } catch (IOException | RestClientException e) {
 			LogUtil.error(getClassName(), e, e.getMessage());
         }
 		return null;

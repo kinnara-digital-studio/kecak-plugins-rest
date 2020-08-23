@@ -6,6 +6,8 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.stream.JsonReader;
 import com.kinnara.kecakplugins.rest.commons.JsonHandler;
+import com.kinnara.kecakplugins.rest.commons.RestUtils;
+import com.kinnara.kecakplugins.rest.exceptions.RestClientException;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
@@ -32,14 +34,13 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class RestParticipantMapper extends DefaultParticipantPlugin{
+public class RestParticipantMapper extends DefaultParticipantPlugin implements RestUtils {
 	private final static String LABEL = "REST Participant Mapping";
 
 	@Override
 	public Collection<String> getActivityAssignments(Map props) {
-		Collection<String> approver = new ArrayList<String>();
-		try { 
-			LogUtil.info(getClassName(), "[REST-PARTICIPANT MAPPER]");
+		Collection<String> approver = new ArrayList<>();
+		try {
 			DirectoryManager directoryManager = (DirectoryManager) AppUtil.getApplicationContext().getBean("directoryManager");
 			String url = AppUtil.processHashVariable(getPropertyString("url"), null, null, null);
 
@@ -53,17 +54,7 @@ public class RestParticipantMapper extends DefaultParticipantPlugin{
 				}
 			}
 
-			HttpClient client;
-			if(isIgnoreCertificateError()) {
-				SSLContext sslContext = new SSLContextBuilder()
-						.loadTrustMaterial(null, (certificate, authType) -> true).build();
-				client = HttpClients.custom().setSSLContext(sslContext)
-						.setSSLHostnameVerifier(new NoopHostnameVerifier())
-						.build();
-			} else {
-				client = HttpClientBuilder.create().build();
-			}
-
+			HttpClient client = getHttpClient(isIgnoreCertificateError());
 			HttpRequestBase request = new HttpGet(url);
 
 			// persiapkan HTTP header
@@ -104,10 +95,10 @@ public class RestParticipantMapper extends DefaultParticipantPlugin{
 				LogUtil.warn(getClassName(), "Unsupported content type [" + responseContentType + "]");
 				try(BufferedReader br = new BufferedReader(new InputStreamReader(response.getEntity().getContent()))) {
 					String lines = br.lines().collect(Collectors.joining());
-					LogUtil.info(getClassName(), "Response ["+lines+"]");
+					LogUtil.warn(getClassName(), "Response [" + lines + "]");
 				}
 			}
-		} catch (IOException | NoSuchAlgorithmException | KeyStoreException | KeyManagementException ex) {
+		} catch (IOException | RestClientException ex) {
 			LogUtil.error(this.getClass().getName(), ex,ex.getMessage());
 		}
 		return approver;

@@ -1,5 +1,7 @@
 package com.kinnara.kecakplugins.rest;
 
+import com.kinnara.kecakplugins.rest.commons.RestUtils;
+import com.kinnara.kecakplugins.rest.exceptions.RestClientException;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.*;
@@ -32,7 +34,7 @@ import java.util.stream.Stream;
 /**
  * @author aristo
  */
-public class RestStoreBinder extends FormBinder implements FormStoreElementBinder {
+public class RestStoreBinder extends FormBinder implements FormStoreElementBinder, RestUtils {
     private final static String LABEL = "REST Store Binder";
 
     public String getLabel() {
@@ -96,17 +98,7 @@ public class RestStoreBinder extends FormBinder implements FormStoreElementBinde
         }
 
         try {
-            HttpClient client;
-            if ("true".equalsIgnoreCase(getPropertyString("ignoreCertificateError"))) {
-                SSLContext sslContext = new SSLContextBuilder()
-                        .loadTrustMaterial(null, (certificate, authType) -> true).build();
-                client = HttpClients.custom().setSSLContext(sslContext)
-                        .setSSLHostnameVerifier(new NoopHostnameVerifier())
-                        .build();
-            } else {
-                client = HttpClientBuilder.create().build();
-            }
-
+            HttpClient client = getHttpClient("true".equalsIgnoreCase(getPropertyString("ignoreCertificateError")));
             final HttpRequestBase request;
 
             if ("POST".equals(method)) {
@@ -151,7 +143,7 @@ public class RestStoreBinder extends FormBinder implements FormStoreElementBinde
             } catch (IOException e) {
                 LogUtil.error(RestStoreBinder.class.getName(), e, e.getMessage());
             }
-        } catch (NoSuchAlgorithmException | KeyStoreException | KeyManagementException e) {
+        } catch (RestClientException e) {
             LogUtil.error(RestStoreBinder.class.getName(), e, e.getMessage());
         }
 

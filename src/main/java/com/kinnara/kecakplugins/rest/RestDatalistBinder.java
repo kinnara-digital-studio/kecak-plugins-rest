@@ -5,6 +5,8 @@ import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
 import com.google.gson.stream.JsonReader;
 import com.kinnara.kecakplugins.rest.commons.JsonHandler;
+import com.kinnara.kecakplugins.rest.commons.RestUtils;
+import com.kinnara.kecakplugins.rest.exceptions.RestClientException;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
@@ -41,7 +43,7 @@ import java.util.stream.Stream;
  * @author aristo
  *
  */
-public class RestDatalistBinder extends DataListBinderDefault{
+public class RestDatalistBinder extends DataListBinderDefault implements RestUtils {
 
 	private String getDefaultPropertyValues(String json) {
 		try {
@@ -171,17 +173,7 @@ public class RestDatalistBinder extends DataListBinderDefault{
 	            }
             }
 
-			HttpClient client;
-			if(isIgnoreCertificateError()) {
-				SSLContext sslContext = new SSLContextBuilder()
-						.loadTrustMaterial(null, (certificate, authType) -> true).build();
-				client = HttpClients.custom().setSSLContext(sslContext)
-						.setSSLHostnameVerifier(new NoopHostnameVerifier())
-						.build();
-			} else {
-				client = HttpClientBuilder.create().build();
-			}
-
+			HttpClient client = getHttpClient(isIgnoreCertificateError());
             final HttpRequestBase request = new HttpGet(url);
 
 			// prepare HTTP header
@@ -218,7 +210,7 @@ public class RestDatalistBinder extends DataListBinderDefault{
 				}
             }
 
-        } catch (IOException | NoSuchAlgorithmException | KeyStoreException | KeyManagementException ex) {
+        } catch (IOException | RestClientException ex) {
             Logger.getLogger(RestOptionsBinder.class.getName()).log(Level.SEVERE, null, ex);
         }
         return new FormRowSet();
