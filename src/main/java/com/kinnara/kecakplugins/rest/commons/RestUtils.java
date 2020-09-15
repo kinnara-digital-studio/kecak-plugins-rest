@@ -69,4 +69,13 @@ public interface RestUtils {
                             .orElse("");
                 });
     }
+
+    /**
+     * Returns 200ish, 300ish, 400ish, or 500ish
+     * @param status
+     * @return
+     */
+    default int getStatusGroupCode(int status) {
+        return status - (status & 100);
+    }
 }

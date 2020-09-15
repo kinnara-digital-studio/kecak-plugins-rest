@@ -2,7 +2,6 @@ package com.kinnara.kecakplugins.rest;
 
 import com.google.gson.*;
 import com.kinnara.kecakplugins.rest.commons.RestUtils;
-import com.kinnara.kecakplugins.rest.commons.StuffedForm;
 import com.kinnara.kecakplugins.rest.commons.Unclutter;
 import com.kinnara.kecakplugins.rest.exceptions.RestClientException;
 import org.apache.http.HttpEntity;
@@ -148,13 +147,17 @@ public class RestTool extends DefaultApplicationPlugin implements RestUtils, Unc
 				String responseContentType = entity.getContentType().getValue();
 
 				int statusCode = response.getStatusLine().getStatusCode();
-				LogUtil.info(getClassName(), "Response Status Code ["+statusCode+"]");
+				if(getStatusGroupCode(statusCode) != 200) {
+					LogUtil.info(getClassName(), "Response status code [" + statusCode + "]");
+				} else {
+					LogUtil.warn(getClassName(), "Response error code [" + statusCode + "]");
+				}
 
 				try(BufferedReader br = new BufferedReader(new InputStreamReader(response.getEntity().getContent()))) {
 					String responseBody = br.lines().collect(Collectors.joining());
 
 					if(debug) {
-						LogUtil.info(getClassName(), "RESPONSE Content-Type [" + responseContentType + "] body [" + responseBody + "]");
+						LogUtil.info(getClassName(), "Response Content-Type [" + responseContentType + "] body [" + responseBody + "]");
 					}
 
 					if(!Optional.ofNullable(statusCodeworkflowVariable).orElse("").isEmpty()) {
@@ -430,40 +433,6 @@ public class RestTool extends DefaultApplicationPlugin implements RestUtils, Unc
 				.collect(Collectors.toList());
 	}
 
-
-	/**
-	 * Get property "formDefId"
-	 *
-	 * @param properties
-	 * @return
-	 * @throws RestClientException
-	 */
-	@Nullable
-	private StuffedForm getForm(Map properties) {
-		PluginManager pluginManager = (PluginManager) properties.get("pluginManager");
-		AppDefinition appDefinition = AppUtil.getCurrentAppDefinition();
-		WorkflowAssignment workflowAssignment = (WorkflowAssignment) properties.get("workflowAssignment");
-		AppService appService = (AppService) pluginManager.getBean("appService");
-
-		return Optional.of("formDefId")
-				.map(properties::get)
-				.map(String::valueOf)
-				.map(s -> {
-					FormData formData = new FormData();
-					formData.setPrimaryKeyValue(getPrimaryKey(properties));
-					if(workflowAssignment != null) {
-						formData.setActivityId(workflowAssignment.getActivityId());
-						formData.setProcessId(workflowAssignment.getProcessId());
-					}
-
-					Form form = appService.viewDataForm(appDefinition.getAppId(), appDefinition.getVersion().toString(), s, null, null, null, formData, null, null);
-
-					return Optional.ofNullable(form)
-							.map(f -> new StuffedForm(form, formData))
-							.orElse(null);
-				})
-				.orElse(null);
-	}
 
 	/**
 	 * Get property "debug"
