@@ -7,16 +7,14 @@ import com.google.gson.stream.JsonReader;
 import com.kinnara.kecakplugins.rest.commons.DefaultXmlSaxHandler;
 import com.kinnara.kecakplugins.rest.commons.FieldMatcher;
 import com.kinnara.kecakplugins.rest.commons.JsonHandler;
-import com.kinnara.kecakplugins.rest.commons.RestUtils;
+import com.kinnara.kecakplugins.rest.commons.RestMixin;
 import com.kinnara.kecakplugins.rest.exceptions.RestClientException;
+import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpRequestBase;
-import org.apache.http.conn.ssl.NoopHostnameVerifier;
-import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.ssl.SSLContextBuilder;
+import org.apache.http.client.methods.HttpUriRequest;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.form.model.*;
 import org.joget.apps.form.service.FormUtil;
@@ -26,7 +24,6 @@ import org.joget.workflow.model.service.WorkflowManager;
 import org.springframework.context.ApplicationContext;
 import org.xml.sax.SAXException;
 
-import javax.net.ssl.SSLContext;
 import javax.servlet.http.HttpServletResponse;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
@@ -34,9 +31,6 @@ import javax.xml.parsers.SAXParserFactory;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.security.KeyManagementException;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
@@ -53,7 +47,7 @@ import java.util.stream.Stream;
  * @author aristo
  *
  */
-public class RestOptionsBinder extends FormBinder implements FormLoadOptionsBinder, RestUtils {
+public class RestOptionsBinder extends FormBinder implements FormLoadOptionsBinder, RestMixin {
 	private String LABEL = "REST Option Binder";
 	
     public String getName() {
@@ -87,40 +81,18 @@ public class RestOptionsBinder extends FormBinder implements FormLoadOptionsBind
             WorkflowManager workflowManager = (WorkflowManager)appContext.getBean("workflowManager");
             WorkflowAssignment wfAssignment = workflowManager.getAssignment(fd.getActivityId());
             
-            String url = AppUtil.processHashVariable(getPropertyString("url"), wfAssignment, null, null);
-            
-            Object[] parameters = (Object[]) getProperty("parameters");
-            if(parameters != null) {
-                url += (url.trim().matches("https?://.+\\?.*") ? "&" : "?") + Arrays.stream(parameters)
-                        .filter(Objects::nonNull)
-                        .map(o -> (Map<String, String>)o)
-                        .map(m -> String.format("%s=%s", m.get("key"), AppUtil.processHashVariable(m.get("value"), wfAssignment, null, null)))
-                        .collect(Collectors.joining("&"));
-			}
-
-            HttpClient client = getHttpClient(isIgnoreCertificateError());
-            HttpRequestBase request = new HttpGet(url);
-            
-            // persiapkan HTTP header
-			Optional.ofNullable(getProperty("headers"))
-					.map(o -> (Object[])o)
-					.map(Arrays::stream)
-					.orElse(Stream.empty())
-					.map(o -> (Map<String, String>)o)
-					.filter(r -> !String.valueOf(r.get("key")).trim().isEmpty())
-					.forEach(row -> request.addHeader(row.get("key"), AppUtil.processHashVariable(row.get("value"), wfAssignment, null, null)));
-
-            // kirim request ke server
-            HttpResponse response = client.execute(request);
+            final String url = getPropertyUrl(wfAssignment);
+            final HttpClient client = getHttpClient(isIgnoreCertificateError());
+            final HttpUriRequest request = getHttpRequest(wfAssignment, url, getPropertyMethod(), getPropertyHeaders(wfAssignment));
+            final HttpResponse response = client.execute(request);
 
             if(response.getStatusLine().getStatusCode() != HttpServletResponse.SC_OK) {
                 LogUtil.warn(getClassName(), "Response status ["+response.getStatusLine().getStatusCode()+"]");
                 return new FormRowSet();
             }
 
-            String responseContentType = response.getEntity().getContentType().getValue();
+            String responseContentType = getResponseContentType(response);
 
-            
             // get properties
 			String recordPath = getPropertyString("recordPath");
 			String valuePath = getPropertyString("valuePath");
@@ -178,15 +150,6 @@ public class RestOptionsBinder extends FormBinder implements FormLoadOptionsBind
         }
         return null;
     }
-
-	/**
-	 * Property "ignoreCertificateError"
-	 *
-	 * @return
-	 */
-	private boolean isIgnoreCertificateError() {
-    	return "true".equalsIgnoreCase(getPropertyString("ignoreCertificateError"));
-	}
 
 	private class OptionsBinderSaxHandler extends DefaultXmlSaxHandler {
     	private FormRowSet rowSet;

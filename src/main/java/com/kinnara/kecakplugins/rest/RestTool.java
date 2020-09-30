@@ -1,21 +1,18 @@
 package com.kinnara.kecakplugins.rest;
 
 import com.google.gson.*;
-import com.kinnara.kecakplugins.rest.commons.RestUtils;
+import com.kinnara.kecakplugins.rest.commons.RestMixin;
 import com.kinnara.kecakplugins.rest.commons.Unclutter;
 import com.kinnara.kecakplugins.rest.exceptions.RestClientException;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpEntityEnclosingRequestBase;
-import org.apache.http.client.methods.HttpRequestBase;
-import org.apache.http.entity.StringEntity;
+import org.apache.http.client.methods.HttpUriRequest;
 import org.joget.apps.app.dao.FormDefinitionDao;
 import org.joget.apps.app.model.AppDefinition;
 import org.joget.apps.app.model.FormDefinition;
 import org.joget.apps.app.service.AppService;
 import org.joget.apps.app.service.AppUtil;
-import org.joget.apps.form.dao.FormDataDao;
 import org.joget.apps.form.model.Form;
 import org.joget.apps.form.model.FormData;
 import org.joget.apps.form.model.FormRow;
@@ -23,7 +20,6 @@ import org.joget.apps.form.model.FormRowSet;
 import org.joget.apps.form.service.FormService;
 import org.joget.commons.util.LogUtil;
 import org.joget.plugin.base.DefaultApplicationPlugin;
-import org.joget.plugin.base.PluginManager;
 import org.joget.workflow.model.WorkflowAssignment;
 import org.joget.workflow.model.service.WorkflowManager;
 import org.springframework.context.ApplicationContext;
@@ -33,8 +29,6 @@ import javax.annotation.Nullable;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -46,7 +40,7 @@ import java.util.stream.Stream;
  * @author aristo
  *
  */
-public class RestTool extends DefaultApplicationPlugin implements RestUtils, Unclutter {
+public class RestTool extends DefaultApplicationPlugin implements RestMixin, Unclutter {
 	private final static String LABEL = "REST Tool";
 
 	public String getLabel() {
@@ -83,80 +77,33 @@ public class RestTool extends DefaultApplicationPlugin implements RestUtils, Unc
 		try {
 			ApplicationContext appContext = AppUtil.getApplicationContext();
 			WorkflowManager workflowManager = (WorkflowManager)appContext.getBean("workflowManager");
-			PluginManager pluginManager = (PluginManager) properties.get("pluginManager");
-			FormDataDao formDataDao = (FormDataDao) pluginManager.getBean("formDataDao");
 			WorkflowAssignment wfAssignment = (WorkflowAssignment) properties.get("workflowAssignment");
 
-			final String url = String.valueOf(properties.get("url")).replaceAll("#", ":");
-			String method = String.valueOf(properties.get("method"));
 			String statusCodeworkflowVariable = String.valueOf(properties.get("statusCodeworkflowVariable"));
-			String contentType = String.valueOf(properties.get("contentType"));
 			String body = String.valueOf(properties.get("body"));
-			final boolean debug = isDebug(properties);
-
-			// Parameters
-			final Pattern p = Pattern.compile("https?://.+\\?.+=,*");
-
-			final StringBuilder urlBuilder = new StringBuilder(url.trim());
-			List<Map<String, String>> parameters = getParameters(properties);
-			parameters.forEach(throwableConsumer(row -> {
-				// inflate hash variables
-				String key = row.get("key");
-				String value = row.get("value");
-
-				// if url already contains parameters, use &
-				Matcher m = p.matcher(urlBuilder.toString());
-				urlBuilder.append(String.format("%s%s=%s", m.find() ? "&" : "?" ,key, URLEncoder.encode(value, "UTF-8")));
-			}));
-
-			HttpClient client = getHttpClient(getIgnoreCertificateError(properties));
-			final HttpRequestBase request = getHttpRequest(urlBuilder.toString(), method);
-			List<Map<String, String>> headers = getHeaders(properties);
-			headers.forEach(throwableConsumer(row -> {
-				// inflate hash variables
-				String key = row.get("key");
-				String value = row.get("value");
-
-				request.addHeader(key, value);
-			}));
-
-			// Force to use content type from select box
-			request.removeHeaders("Content-Type");
-			request.addHeader("Content-Type", contentType);
-
-			if(isNotEmpty(body) && ("POST".equals(method) || "PUT".equals(method))) {
-				setHttpEntity((HttpEntityEnclosingRequestBase) request, body);
-			}
 
 			try {
-				if(debug) {
-					LogUtil.info(getClassName(), "REQUEST DETAILS : ");
-					LogUtil.info(getClassName(), "REQUEST METHOD ["+request.getMethod()+"]");
-					LogUtil.info(getClassName(), "REQUEST URI ["+request.getURI().toString()+"]");
-					Arrays.stream(request.getAllHeaders()).forEach(h -> LogUtil.info(getClassName(), "REQUEST HEADER ["+h.getName()+"] ["+h.getValue()+"]"));
-				}
+				final String url = getPropertyUrl(wfAssignment);
+				final HttpClient client = getHttpClient(isIgnoreCertificateError());
+				final HttpEntity httpEntity = getRequestEntity(wfAssignment);
+				final HttpUriRequest request = getHttpRequest(wfAssignment, url, getPropertyMethod(), getPropertyHeaders(wfAssignment), httpEntity);
+				final HttpResponse response = client.execute(request);
 
-				HttpResponse response = client.execute(request);
 				HttpEntity entity = response.getEntity();
-
 				if(entity == null) {
-					LogUtil.warn(getClassName(), "Empty response");
-					return null;
+					throw new RestClientException("Empty response");
 				}
 
-				String responseContentType = entity.getContentType().getValue();
-
-				int statusCode = response.getStatusLine().getStatusCode();
+				final String responseContentType = getResponseContentType(response);
+				final int statusCode = getStatusCode(response);
 				if(getStatusGroupCode(statusCode) != 200) {
-					LogUtil.info(getClassName(), "Response status code [" + statusCode + "]");
-				} else {
-					LogUtil.warn(getClassName(), "Response error code [" + statusCode + "]");
+					throw new RestClientException("Response code [" + statusCode + "] is not 200 (Success)");
 				}
 
 				try(BufferedReader br = new BufferedReader(new InputStreamReader(response.getEntity().getContent()))) {
 					String responseBody = br.lines().collect(Collectors.joining());
 
-					if(debug) {
+					if(isDebug()) {
 						LogUtil.info(getClassName(), "Response Content-Type [" + responseContentType + "] body [" + responseBody + "]");
 					}
 
@@ -165,20 +112,15 @@ public class RestTool extends DefaultApplicationPlugin implements RestUtils, Unc
 					}
 
 					if(!responseContentType.contains("application/json")) {
-						LogUtil.warn(getClassName(), "URL [" + request.getURI().toString()
-								+ "] Response Content-Type : [" + responseContentType + "] not supported [" + responseBody + "]");
-
-						return null;
+						throw new RestClientException("Content-Type : [" + responseContentType + "] not supported");
 					}
 
-					JsonParser parser = new JsonParser();
-					JsonElement completeElement;
+					final JsonElement completeElement;
 					try {
+						JsonParser parser = new JsonParser();
 						completeElement = parser.parse(responseBody);
 					} catch (JsonSyntaxException ex) {
-						// do nothing
-						LogUtil.error(getClassName(), ex, ex.getMessage());
-						return null;
+						throw new RestClientException(ex);
 					}
 
 					Optional.ofNullable(properties.get("mapresponsetovariable"))
@@ -198,7 +140,7 @@ public class RestTool extends DefaultApplicationPlugin implements RestUtils, Unc
 								}
 
 								if(currentElement != null && currentElement.isJsonPrimitive()) {
-									if(debug)
+									if(isDebug())
 										LogUtil.info(getClassName(), "Setting workflow variable ["+row.get("workflowVariable")+"] with ["+currentElement.getAsString()+"]");
 									workflowManager.processVariable(wfAssignment.getProcessId(), row.get("workflowVariable"), currentElement.getAsString());
 								}
@@ -210,11 +152,9 @@ public class RestTool extends DefaultApplicationPlugin implements RestUtils, Unc
 						return null;
 					}
 
-					Form form = generateForm(formDefId);
-					if(form == null) {
-						LogUtil.warn(getClassName(), "Error generating form [" + formDefId + "]");
-						return null;
-					}
+					Form form = Optional.of(formDefId)
+							.map(this::generateForm)
+							.orElseThrow(() -> new RestClientException("Error generating form [" + formDefId + "]"));
 
 					try {
 						String recordPath = getPropertyString("jsonRecordPath");
@@ -233,7 +173,7 @@ public class RestTool extends DefaultApplicationPlugin implements RestUtils, Unc
 						String primaryKey = appService.getOriginProcessId(wfAssignment.getProcessId());
 						parseJson("", completeElement, recordPattern, fieldPattern, true, result, null, getPropertyString("foreignKey"), primaryKey);
 
-						if(debug) {
+						if(isDebug()) {
 							result.stream()
 									.peek(r -> LogUtil.info(getClassName(), "-------Row Set-------"))
 									.flatMap(r -> r.entrySet().stream())
@@ -318,19 +258,6 @@ public class RestTool extends DefaultApplicationPlugin implements RestUtils, Unc
 
 	/**
 	 *
-	 * @param request : POST or PUT request
-	 * @param entity : body content
-	 */
-	private void setHttpEntity(HttpEntityEnclosingRequestBase request, String entity) throws RestClientException {
-		try {
-			request.setEntity(new StringEntity(entity));
-		} catch (UnsupportedEncodingException e) {
-			throw new RestClientException(e);
-		}
-	}
-
-	/**
-	 *
 	 * @param variable : variable name to search
 	 * @param element : element to search for variable
 	 * @return
@@ -390,15 +317,6 @@ public class RestTool extends DefaultApplicationPlugin implements RestUtils, Unc
 	}
 
 	/**
-	 * Get property "ignoreCertificateError"
-	 *
-	 * @return
-	 */
-	private boolean getIgnoreCertificateError(Map<String, Object> properties) {
-		return "true".equalsIgnoreCase(String.valueOf(properties.get("ignoreCertificateError")));
-	}
-
-	/**
 	 * Get property "parameters"
 	 *
 	 * @param properties
@@ -406,41 +324,5 @@ public class RestTool extends DefaultApplicationPlugin implements RestUtils, Unc
 	 */
 	private List<Map<String, String>> getParameters(Map<String, Object> properties) {
 		return getGridProperties(properties, "parameters");
-	}
-
-	/**
-	 * Get property "headers"
-	 *
-	 * @param properties
-	 * @return
-	 */
-	private List<Map<String, String>> getHeaders(Map<String, Object> properties) {
-		return getGridProperties(properties, "headers");
-	}
-
-	private List<Map<String, String>> getGridProperties(Map<String, Object> properties, String propertyName) {
-		return Optional.of(propertyName)
-				.map(properties::get)
-				.filter(o -> o instanceof Object[])
-				.map(o -> (Object[])o)
-				.map(Arrays::stream)
-				.orElseGet(Stream::empty)
-				.filter(o -> o instanceof Map)
-				.map(o -> (Map<String, Object>)o)
-				.map(m -> m.entrySet()
-						.stream()
-						.collect(Collectors.toMap(Map.Entry::getKey, e -> String.valueOf(e.getValue()))))
-				.collect(Collectors.toList());
-	}
-
-
-	/**
-	 * Get property "debug"
-	 *
-	 * @param properties
-	 * @return
-	 */
-	private boolean isDebug(Map<String, Object> properties) {
-		return "true".equalsIgnoreCase(String.valueOf(properties.get("debug")));
 	}
 }

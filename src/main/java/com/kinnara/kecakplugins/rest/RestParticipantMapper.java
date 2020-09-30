@@ -6,35 +6,27 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.stream.JsonReader;
 import com.kinnara.kecakplugins.rest.commons.JsonHandler;
-import com.kinnara.kecakplugins.rest.commons.RestUtils;
+import com.kinnara.kecakplugins.rest.commons.RestMixin;
 import com.kinnara.kecakplugins.rest.exceptions.RestClientException;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpRequestBase;
-import org.apache.http.conn.ssl.NoopHostnameVerifier;
-import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.ssl.SSLContextBuilder;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.form.model.FormRowSet;
 import org.joget.commons.util.LogUtil;
 import org.joget.directory.model.service.DirectoryManager;
 import org.joget.workflow.model.DefaultParticipantPlugin;
 
-import javax.net.ssl.SSLContext;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.security.KeyManagementException;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class RestParticipantMapper extends DefaultParticipantPlugin implements RestUtils {
+public class RestParticipantMapper extends DefaultParticipantPlugin implements RestMixin {
 	private final static String LABEL = "REST Participant Mapping";
 
 	@Override
@@ -121,7 +113,7 @@ public class RestParticipantMapper extends DefaultParticipantPlugin implements R
 
 	@Override
 	public String getName() {
-		return LABEL;
+		return getLabel() + getVersion();
 	}
 
 	@Override
@@ -132,14 +124,5 @@ public class RestParticipantMapper extends DefaultParticipantPlugin implements R
 	@Override
 	public String getDescription() {
 		return getClass().getPackage().getImplementationTitle();
-	}
-
-	/**
-	 * Property "ignoreCertificateError"
-	 *
-	 * @return
-	 */
-	private boolean isIgnoreCertificateError() {
-		return "true".equalsIgnoreCase(getPropertyString("ignoreCertificateError"));
 	}
 }

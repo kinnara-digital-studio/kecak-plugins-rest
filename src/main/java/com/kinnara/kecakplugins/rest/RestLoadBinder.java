@@ -1,17 +1,11 @@
 package com.kinnara.kecakplugins.rest;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonParser;
-import com.google.gson.JsonSyntaxException;
-import com.google.gson.stream.JsonReader;
-import com.kinnara.kecakplugins.rest.commons.DefaultXmlSaxHandler;
-import com.kinnara.kecakplugins.rest.commons.JsonHandler;
-import com.kinnara.kecakplugins.rest.commons.RestUtils;
+import com.kinnara.kecakplugins.rest.commons.RestMixin;
 import com.kinnara.kecakplugins.rest.exceptions.RestClientException;
+import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpRequestBase;
+import org.apache.http.client.methods.HttpUriRequest;
 import org.joget.apps.app.model.AppDefinition;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.form.model.*;
@@ -19,25 +13,17 @@ import org.joget.commons.util.LogUtil;
 import org.joget.workflow.model.WorkflowAssignment;
 import org.joget.workflow.model.service.WorkflowManager;
 import org.springframework.context.ApplicationContext;
-import org.xml.sax.SAXException;
 
-import javax.servlet.http.HttpServletResponse;
-import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.parsers.SAXParser;
-import javax.xml.parsers.SAXParserFactory;
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.Arrays;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
-public class RestLoadBinder extends FormBinder implements FormLoadElementBinder, RestUtils {
-	private String LABEL = "REST Load Binder";
+/**
+ * @author aristo
+ *
+ * @deprecated use {@link RestFormElementBinder}
+ */
+@Deprecated
+public class RestLoadBinder extends FormBinder implements FormLoadElementBinder, RestMixin {
+	private String LABEL = "(Deprecated) REST Load Binder";
 
     public String getName() {
         return LABEL;
@@ -69,136 +55,37 @@ public class RestLoadBinder extends FormBinder implements FormLoadElementBinder,
         return json;
     }
 
-    @Override
-    public FormRowSet load(Element elmnt, String primaryKey, FormData fd) {
-    	if(primaryKey == null || primaryKey.isEmpty()) {
-    		LogUtil.warn(getClassName(), "Primary Key is not defined or empty");
-		}
-
-        try {
-            ApplicationContext appContext = AppUtil.getApplicationContext();
-            WorkflowManager workflowManager = (WorkflowManager)appContext.getBean("workflowManager");
-            WorkflowAssignment wfAssignment = workflowManager.getAssignment(fd.getActivityId());
-
-            String url = AppUtil.processHashVariable(getPropertyString("url"), wfAssignment, null, null);
-
-            // combine parameter ke url
-			Object[] parameters = (Object[]) getProperty("parameters");
-			if(parameters != null) {
-				url += (url.trim().matches("https?://.+\\?.*") ? "&" : "?") + Arrays.stream(parameters)
-						.filter(Objects::nonNull)
-						.map(o -> (Map<String, String>)o)
-						.map(m -> String.format("%s=%s", m.get("key"), AppUtil.processHashVariable(m.get("value"), wfAssignment, null, null)))
-						.collect(Collectors.joining("&"));
-			}
-
-			url = url.replaceAll(":id", primaryKey);
-
-			HttpClient client = getHttpClient(isIgnoreCertificateError());
-			LogUtil.info(getClassName(), "url ["+url+"]");
-            HttpRequestBase request = new HttpGet(url);
-
-            // persiapkan HTTP Header
-			Optional.ofNullable(getProperty("headers"))
-					.map(o -> (Object[])o)
-					.map(Arrays::stream)
-					.orElse(Stream.empty())
-					.map(o -> (Map<String, String>)o)
-					.filter(r -> !String.valueOf(r.get("key")).trim().isEmpty())
-					.forEach(row -> request.addHeader(row.get("key"), AppUtil.processHashVariable(row.get("value"), wfAssignment, null, null)));
-
-            // kirim request ke server
-            HttpResponse response = client.execute(request);
-			if(response.getStatusLine().getStatusCode() != HttpServletResponse.SC_OK) {
-				LogUtil.warn(getClassName(), "Response status ["+response.getStatusLine().getStatusCode()+"]");
-				return new FormRowSet();
-			}
-
-            String responseContentType = response.getEntity().getContentType().getValue();
-
-            // get properties
-			String recordPath = getPropertyString("recordPath");
-
-			Pattern recordPattern = Pattern.compile(recordPath.replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
-
-            if(responseContentType.contains("json")) {
-				JsonParser parser = new JsonParser();
-				try(JsonReader reader = new JsonReader(new InputStreamReader(response.getEntity().getContent()))) {
-					JsonElement element = parser.parse(reader);
-					LogUtil.info(getClassName(), "json element ["+element.toString()+"]");
-					JsonHandler handler = new JsonHandler(element, recordPattern);
-					FormRowSet result = handler.parse(1);
-					return result;
-				} catch (JsonSyntaxException ex) {
-					LogUtil.error(getClassName(), ex, ex.getMessage());
-				}
-            } else if(responseContentType.contains("xml")) {
-				try {
-					FormRowSet result = new FormRowSet();
-					SAXParserFactory factory = SAXParserFactory.newInstance();
-					SAXParser saxParser = factory.newSAXParser();
-					saxParser.parse(response.getEntity().getContent(),
-							new LoadBinderSaxHandler(
-									Pattern.compile(recordPath.replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE),
-									result
-							));
-
-					return result;
-				} catch (UnsupportedOperationException | SAXException | ParserConfigurationException e1) {
-					e1.printStackTrace();
-				}
-
-			} else {
-				LogUtil.warn(getClassName(), "Unsupported content type [" + responseContentType + "]");
-				try(BufferedReader br = new BufferedReader(new InputStreamReader(response.getEntity().getContent()))) {
-					String lines = br.lines().collect(Collectors.joining());
-					LogUtil.info(getClassName(), "Response ["+lines+"]");
-				}
-            }
-        } catch (IOException | RestClientException e) {
-			LogUtil.error(getClassName(), e, e.getMessage());
-        }
-		return null;
-    }
-
-    private static class LoadBinderSaxHandler extends DefaultXmlSaxHandler {
-    	private FormRowSet rowSet;
-    	private FormRow row;
-
-    	/**
-    	 * @param recordPattern
-    	 * @param rowSet : output parameter, the record set being built
-    	 */
-    	public LoadBinderSaxHandler(Pattern recordPattern, FormRowSet rowSet) {
-    		super(recordPattern);
-    		this.rowSet = rowSet;
-    		row = null;
-    	}
-
-		@Override
-		protected void onOpeningTag(String recordQName) {
-			row = new FormRow();
-		}
-
-		@Override
-		protected void onTagContent(String recordQName, String path, String content) {
-			if(row.getProperty(recordQName) == null) {
-				row.setProperty(recordQName, content);
-			}
-		}
-
-		@Override
-		protected void onClosingTag(String recordQName) {
-			rowSet.add(row);
-		}
-    }
-
 	/**
-	 * Property "ignoreCertificateError"
+	 * Load from REST API
 	 *
+	 * @param element
+	 * @param primaryKey
+	 * @param formData
 	 * @return
 	 */
-	private boolean isIgnoreCertificateError() {
-		return "true".equalsIgnoreCase(getPropertyString("ignoreCertificateError"));
+	@Override
+	public FormRowSet load(Element element, String primaryKey, FormData formData) {
+		ApplicationContext appContext = AppUtil.getApplicationContext();
+		WorkflowManager workflowManager = (WorkflowManager)appContext.getBean("workflowManager");
+		WorkflowAssignment workflowAssignment = workflowManager.getAssignment(formData.getActivityId());
+
+		if(isEmpty(primaryKey)) {
+			LogUtil.warn(getClassName(), "Primary Key is not provided");
+		}
+
+		try {
+			String url = getPropertyUrl(workflowAssignment)
+					.replaceAll(":id", ifEmptyThen(primaryKey, ""));
+
+			final HttpClient client = getHttpClient(isIgnoreCertificateError());
+			final HttpEntity httpEntity = getRequestEntity(workflowAssignment);
+			final HttpUriRequest request = getHttpRequest(workflowAssignment, url, getPropertyMethod(), getPropertyHeaders(), httpEntity);
+			final HttpResponse response = client.execute(request);
+			return handleResponse(response);
+		} catch (IOException | RestClientException e) {
+			LogUtil.error(getClassName(), e, e.getMessage());
+		}
+
+		return null;
 	}
 }

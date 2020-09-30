@@ -5,16 +5,12 @@ import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
 import com.google.gson.stream.JsonReader;
 import com.kinnara.kecakplugins.rest.commons.JsonHandler;
-import com.kinnara.kecakplugins.rest.commons.RestUtils;
+import com.kinnara.kecakplugins.rest.commons.RestMixin;
 import com.kinnara.kecakplugins.rest.exceptions.RestClientException;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpRequestBase;
-import org.apache.http.conn.ssl.NoopHostnameVerifier;
-import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.ssl.SSLContextBuilder;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.datalist.model.*;
 import org.joget.apps.form.model.FormRow;
@@ -24,13 +20,9 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import javax.annotation.Nonnull;
-import javax.net.ssl.SSLContext;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.security.KeyManagementException;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -43,7 +35,7 @@ import java.util.stream.Stream;
  * @author aristo
  *
  */
-public class RestDatalistBinder extends DataListBinderDefault implements RestUtils {
+public class RestDatalistBinder extends DataListBinderDefault implements RestMixin {
 
 	private String getDefaultPropertyValues(String json) {
 		try {
@@ -223,14 +215,5 @@ public class RestDatalistBinder extends DataListBinderDefault implements RestUti
 				.map(o -> (Map<String, String>)o)
 				.filter(r -> !String.valueOf(r.get("key")).trim().isEmpty())
 				.collect(HashMap::new, (hashMap, stringStringMap) -> hashMap.put(stringStringMap.get("key"), stringStringMap.get("value")), Map::putAll);
-	}
-
-	/**
-	 * Property "ignoreCertificateError"
-	 *
-	 * @return
-	 */
-	private boolean isIgnoreCertificateError() {
-		return "true".equalsIgnoreCase(getPropertyString("ignoreCertificateError"));
 	}
 }

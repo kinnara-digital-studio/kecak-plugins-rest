@@ -1,31 +1,35 @@
 [
   {
-	"title" : "@@rest.storeBinder@@",
+    "title" : "@@rest.formElementBinder@@",
     "properties" : [
       {
-    	"name" : "url",
+        "type": "header",
+        "label" : "@@rest.request@@"
+      },
+      {
+        "name" : "url",
         "label" : "@@rest.apiUrl@@",
         "type" : "textfield",
         "required" : "True"
       }, {
-          "name" : "method",
-          "label" : "@@rest.method@@",
-          "type" : "selectbox",
-          "options" : [
-            {
-              "value" : "GET",
-              "label" : "GET"
-            }, {
-              "value" : "POST",
-              "label" : "POST"
-            }, {
-              "value" : "PUT",
-              "label" : "PUT"
-            }, {
-              "value" : "DELETE",
-              "label" : "DELETE"
-            }
-          ]
+        "name" : "method",
+        "label" : "@@rest.method@@",
+        "type" : "selectbox",
+        "options" : [
+          {
+            "value" : "GET",
+            "label" : "GET"
+          }, {
+            "value" : "POST",
+            "label" : "POST"
+          }, {
+            "value" : "PUT",
+            "label" : "PUT"
+          }, {
+            "value" : "DELETE",
+            "label" : "DELETE"
+          }
+        ]
       }, {
         "name" : "parameters",
         "label" : "@@rest.parameters@@",
@@ -33,7 +37,8 @@
         "columns" : [
           {
             "key" : "key",
-            "label" : "@@rest.key@@"
+            "label" : "@@rest.key@@",
+            "required": "true"
           },
           {
             "key" : "value",
@@ -47,7 +52,8 @@
         "columns" : [
           {
             "key" : "key",
-            "label" : "@@rest.key@@"
+            "label" : "@@rest.key@@",
+            "required": "true"
           },
           {
             "key" : "value",
@@ -62,7 +68,8 @@
         "options" : [
           {
             "value" : "application/json",
-            "label" : "application/json"
+            "label" : "application/json",
+            "required": "true"
           },
           {
             "value" : "multipart/form-data",
@@ -87,20 +94,30 @@
         "columns": [
           {
             "key": "key",
-            "value": "@@rest.field@@"
+            "label": "@@rest.key@@",
+            "required": "true"
           },
           {
             "key": "value",
-            "value": "@@rest.value@@"
+            "label": "@@rest.value@@"
           }
         ],
         "control_field" : "contentType",
-        "control_value" : "application/json"
+        "control_value" : "multipart/form-data"
+      },
+      {
+        "type": "header",
+        "label" : "@@rest.response@@"
+      },
+      {
+        "name" : "recordPath",
+        "label" : "@@rest.recordPath@@",
+        "type" : "textfield"
       }
     ]
   },
   {
-    "title" : "@@rest.advanceSettings@@",
+    "title" : "@@rest.debug@@",
     "properties" : [
       {
         "name" : "ignoreCertificateError",
