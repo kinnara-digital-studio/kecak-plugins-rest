@@ -9,8 +9,7 @@ import com.kinnara.kecakplugins.rest.commons.RestMixin;
 import com.kinnara.kecakplugins.rest.exceptions.RestClientException;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpRequestBase;
+import org.apache.http.client.methods.HttpUriRequest;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.datalist.model.*;
 import org.joget.apps.form.model.FormRow;
@@ -153,32 +152,18 @@ public class RestDatalistBinder extends DataListBinderDefault implements RestMix
     @Nonnull
     private FormRowSet executeRequest(int limit, Object[] headersProperty) {
         try {            
-            String url = AppUtil.processHashVariable(getPropertyString("url"), null, null, null);
-            
-            // persiapkan parameter
-            // mengkombine parameter ke url
-            Object[] parameters = (Object[]) getProperty("parameters");
-            if(parameters != null) {
-	            for(Object rowParameter : parameters){
-	            	Map<String, String> row = (Map<String, String>) rowParameter;
-	                url += String.format("%s%s=%s", url.trim().matches("https?://.+\\?.*") ? "&" : "?" ,row.get("key"), row.get("value"));
-	            }
-            }
-
-			HttpClient client = getHttpClient(isIgnoreCertificateError());
-            final HttpRequestBase request = new HttpGet(url);
-
-			// prepare HTTP header
-			Map<String, Object> headers = getGridProperty(headersProperty);
-			headers.forEach((k, v) -> request.addHeader(k, AppUtil.processHashVariable(String.valueOf(v), null, null, null)));
+            final String url = getPropertyUrl();
+			final HttpClient client = getHttpClient(isIgnoreCertificateError());
+            final HttpUriRequest request = getHttpRequest(url, getPropertyMethod(), getPropertyHeaders());
 
             // kirim request ke server
             HttpResponse response = client.execute(request);
-            String responseContentType = response.getEntity().getContentType().getValue();
-            LogUtil.info(getClassName(), "Response status code ["+response.getStatusLine().getStatusCode()+"]");
+            String responseContentType = getResponseContentType(response);
+
+            LogUtil.info(getClassName(), "Response status code ["+ getResponseStatus(response) + "]");
             
             // get properties
-			String recordPath = getPropertyString("recordPath");
+			String recordPath = getPropertyRecordPath();
 			
 			Pattern recordPattern = Pattern.compile(recordPath.replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
 			

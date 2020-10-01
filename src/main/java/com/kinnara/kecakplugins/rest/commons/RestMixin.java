@@ -2,7 +2,6 @@ package com.kinnara.kecakplugins.rest.commons;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
-import com.google.gson.JsonSyntaxException;
 import com.google.gson.stream.JsonReader;
 import com.kinnara.kecakplugins.rest.exceptions.RestClientException;
 import org.apache.http.Header;
@@ -66,6 +65,14 @@ public interface RestMixin extends PropertyEditable, Unclutter {
 
     /**
      * Get property "headers"
+     * @return
+     */
+    default Map<String, String> getPropertyHeaders() {
+        return getPropertyHeaders(null);
+    }
+
+    /**
+     * Get property "headers"
      *
      * @return
      */
@@ -102,6 +109,15 @@ public interface RestMixin extends PropertyEditable, Unclutter {
                 .filter(Objects::nonNull)
                 .map(o -> (Map<String, String>)o)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Get property "url" and "parameters" combined
+     *
+     * @return
+     */
+    default String getPropertyUrl() {
+        return getPropertyUrl(null);
     }
 
     /**
@@ -169,18 +185,17 @@ public interface RestMixin extends PropertyEditable, Unclutter {
         return "true".equalsIgnoreCase(getPropertyString("ignoreCertificateError"));
     }
 
-    default String getPropertyRecordPath() {
-        return getPropertyString("recordPath");
-    }
-
     /**
-     * Get property "headers"
+     * Get property "recordPath"
      *
-     * @param properties
      * @return
      */
-    default List<Map<String, String>> getHeaders(Map<String, Object> properties) {
-        return getGridProperties(properties, "headers");
+    default String getPropertyRecordPath() {
+        return getPropertyRecordPath(null);
+    }
+
+    default String getPropertyRecordPath(WorkflowAssignment workflowAssignment) {
+        return processHashVariable(getPropertyString("recordPath"), workflowAssignment);
     }
 
     /**
@@ -327,6 +342,10 @@ public interface RestMixin extends PropertyEditable, Unclutter {
         }
     }
 
+    default HttpUriRequest getHttpRequest(String url, String method, Map<String, String> headers) throws RestClientException {
+        return getHttpRequest(null, url, method, headers);
+    }
+
     /**
      * Get HTTP request
      *
@@ -436,7 +455,7 @@ public interface RestMixin extends PropertyEditable, Unclutter {
      * @return
      * @throws RestClientException
      */
-    default int getStatusCode(@Nonnull HttpResponse response) throws RestClientException {
+    default int getResponseStatus(@Nonnull HttpResponse response) throws RestClientException {
         return Optional.of(response)
                 .map(HttpResponse::getStatusLine)
                 .map(StatusLine::getStatusCode)
@@ -578,7 +597,7 @@ public interface RestMixin extends PropertyEditable, Unclutter {
      */
     @Nullable
     default FormRowSet handleResponse(@Nonnull HttpResponse response) throws RestClientException {
-        int statusCode = getStatusCode(response);
+        int statusCode = getResponseStatus(response);
         String responseContentType = getResponseContentType(response);
 
         if(isDebug()) {
@@ -586,7 +605,7 @@ public interface RestMixin extends PropertyEditable, Unclutter {
         }
 
         if(statusCode != HttpServletResponse.SC_OK) {
-            LogUtil.warn(getClassName(), "Response status [" + getStatusCode(response) + "] message ["+ getResponseBody(response) +"]");
+            LogUtil.warn(getClassName(), "Response status [" + getResponseStatus(response) + "] message ["+ getResponseBody(response) +"]");
             return null;
         }
 

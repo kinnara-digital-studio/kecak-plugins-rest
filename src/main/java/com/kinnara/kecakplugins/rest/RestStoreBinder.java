@@ -44,7 +44,7 @@ public class RestStoreBinder extends FormBinder implements FormStoreElementBinde
     }
 
     public String getName() {
-        return LABEL;
+        return getLabel() + getVersion();
     }
 
     public String getVersion() {
@@ -75,7 +75,7 @@ public class RestStoreBinder extends FormBinder implements FormStoreElementBinde
         try {
             final HttpClient client = getHttpClient(isIgnoreCertificateError());
             final HttpEntity httpEntity = getRequestEntity(workflowAssignment, rowSet);
-            final HttpUriRequest request = getHttpRequest(workflowAssignment, url, getPropertyMethod(), getPropertyHeaders(), httpEntity);
+            final HttpUriRequest request = getHttpRequest(workflowAssignment, url, getPropertyMethod(), getPropertyHeaders(workflowAssignment), httpEntity);
             final HttpResponse response = client.execute(request);
             return ifNullThen(handleResponse(response), rowSet);
         } catch (RestClientException | IOException e) {

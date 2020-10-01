@@ -12,11 +12,13 @@ import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpRequestBase;
+import org.apache.http.client.methods.HttpUriRequest;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.form.model.FormRowSet;
 import org.joget.commons.util.LogUtil;
 import org.joget.directory.model.service.DirectoryManager;
 import org.joget.workflow.model.DefaultParticipantPlugin;
+import org.joget.workflow.model.WorkflowAssignment;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -31,36 +33,15 @@ public class RestParticipantMapper extends DefaultParticipantPlugin implements R
 
 	@Override
 	public Collection<String> getActivityAssignments(Map props) {
+		WorkflowAssignment workflowAssignment = (WorkflowAssignment) props.get("workflowAssignment");
 		Collection<String> approver = new ArrayList<>();
 		try {
-			DirectoryManager directoryManager = (DirectoryManager) AppUtil.getApplicationContext().getBean("directoryManager");
-			String url = AppUtil.processHashVariable(getPropertyString("url"), null, null, null);
-
-			// persiapkan parameter
-			// mengkombine parameter ke url
-			Object[] parameters = (Object[]) getProperty("parameters");
-			if(parameters != null) {
-				for(Object rowParameter : parameters){
-					Map<String, String> row = (Map<String, String>) rowParameter;
-					url += String.format("%s%s=%s", url.trim().matches("https?://.+\\?.*") ? "&" : "?" ,row.get("key"), row.get("value"));
-				}
-			}
-
-			HttpClient client = getHttpClient(isIgnoreCertificateError());
-			HttpRequestBase request = new HttpGet(url);
-
-			// persiapkan HTTP header
-			Optional.ofNullable(getProperty("headers"))
-					.map(o -> (Object[])o)
-					.map(Arrays::stream)
-					.orElse(Stream.empty())
-					.map(o -> (Map<String, String>)o)
-					.filter(r -> !String.valueOf(r.get("key")).trim().isEmpty())
-					.forEach(row -> request.addHeader(row.get("key"), AppUtil.processHashVariable(row.get("value"), null, null, null)));
-
-			// kirim request ke server
+			final String url = getPropertyUrl(workflowAssignment);
+			final HttpClient client = getHttpClient(isIgnoreCertificateError());
+			final HttpUriRequest request = getHttpRequest(workflowAssignment, url, getPropertyMethod(), getPropertyHeaders(workflowAssignment));
 			HttpResponse response = client.execute(request);
-			String responseContentType = response.getEntity().getContentType().getValue();
+
+			String responseContentType = getResponseContentType(response);
 
 			// get properties
 			String recordPath = getPropertyString("recordPath");

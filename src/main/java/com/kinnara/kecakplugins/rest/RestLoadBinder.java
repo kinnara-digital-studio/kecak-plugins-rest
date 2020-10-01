@@ -26,7 +26,7 @@ public class RestLoadBinder extends FormBinder implements FormLoadElementBinder,
 	private String LABEL = "(Deprecated) REST Load Binder";
 
     public String getName() {
-        return LABEL;
+        return getLabel() + getVersion();
     }
 
     public String getVersion() {
@@ -79,7 +79,7 @@ public class RestLoadBinder extends FormBinder implements FormLoadElementBinder,
 
 			final HttpClient client = getHttpClient(isIgnoreCertificateError());
 			final HttpEntity httpEntity = getRequestEntity(workflowAssignment);
-			final HttpUriRequest request = getHttpRequest(workflowAssignment, url, getPropertyMethod(), getPropertyHeaders(), httpEntity);
+			final HttpUriRequest request = getHttpRequest(workflowAssignment, url, getPropertyMethod(), getPropertyHeaders(workflowAssignment), httpEntity);
 			final HttpResponse response = client.execute(request);
 			return handleResponse(response);
 		} catch (IOException | RestClientException e) {

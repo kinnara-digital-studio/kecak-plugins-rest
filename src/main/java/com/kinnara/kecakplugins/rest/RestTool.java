@@ -61,7 +61,7 @@ public class RestTool extends DefaultApplicationPlugin implements RestMixin, Unc
 	}
 
 	public String getName() {
-		return LABEL;
+		return getLabel() + getVersion();
 	}
 
 	public String getVersion() {
@@ -95,7 +95,7 @@ public class RestTool extends DefaultApplicationPlugin implements RestMixin, Unc
 				}
 
 				final String responseContentType = getResponseContentType(response);
-				final int statusCode = getStatusCode(response);
+				final int statusCode = getResponseStatus(response);
 				if(getStatusGroupCode(statusCode) != 200) {
 					throw new RestClientException("Response code [" + statusCode + "] is not 200 (Success)");
 				}
