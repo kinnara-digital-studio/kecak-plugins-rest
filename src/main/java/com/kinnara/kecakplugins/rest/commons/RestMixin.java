@@ -614,11 +614,12 @@ public interface RestMixin extends PropertyEditable, Unclutter {
         } else if(isXmlResponse(response)) {
             return handleXmlResponse(response);
         } else {
-            LogUtil.warn(getClassName(), "Unsupported response content type [" + responseContentType + "]");
             if(isDebug()) {
                 LogUtil.info(getClassName(), "handleResponse : response [" + getResponseBody(response) + "]");
             }
-            return null;
+
+            LogUtil.warn(getClassName(), "Unsupported response content type [" + responseContentType + "], assume JSON response");
+            return handleJsonResponse(response);
         }
     }
 
