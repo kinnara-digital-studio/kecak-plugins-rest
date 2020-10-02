@@ -1,5 +1,10 @@
 package com.kinnara.kecakplugins.rest.exceptions;
 
+/**
+ * @author aristo
+ *
+ * Rest API Exception
+ */
 public class RestApiException extends Exception {
     private int errorCode;
 
