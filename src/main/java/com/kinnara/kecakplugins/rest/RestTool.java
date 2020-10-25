@@ -80,7 +80,6 @@ public class RestTool extends DefaultApplicationPlugin implements RestMixin, Unc
 			WorkflowAssignment wfAssignment = (WorkflowAssignment) properties.get("workflowAssignment");
 
 			String statusCodeworkflowVariable = String.valueOf(properties.get("statusCodeworkflowVariable"));
-			String body = String.valueOf(properties.get("body"));
 
 			try {
 				final String url = getPropertyUrl(wfAssignment);
@@ -94,11 +93,12 @@ public class RestTool extends DefaultApplicationPlugin implements RestMixin, Unc
 					throw new RestClientException("Empty response");
 				}
 
-				final String responseContentType = getResponseContentType(response);
 				final int statusCode = getResponseStatus(response);
 				if(getStatusGroupCode(statusCode) != 200) {
 					throw new RestClientException("Response code [" + statusCode + "] is not 200 (Success)");
 				}
+
+				final String responseContentType = getResponseContentType(response);
 
 				try(BufferedReader br = new BufferedReader(new InputStreamReader(response.getEntity().getContent()))) {
 					String responseBody = br.lines().collect(Collectors.joining());
@@ -111,7 +111,7 @@ public class RestTool extends DefaultApplicationPlugin implements RestMixin, Unc
 						workflowManager.processVariable(wfAssignment.getProcessId(), statusCodeworkflowVariable, String.valueOf(statusCode));
 					}
 
-					if(!responseContentType.contains("application/json")) {
+					if(!isJsonResponse(response)) {
 						throw new RestClientException("Content-Type : [" + responseContentType + "] not supported");
 					}
 
