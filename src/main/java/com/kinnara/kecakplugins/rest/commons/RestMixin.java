@@ -501,13 +501,13 @@ public interface RestMixin extends PropertyEditable, Unclutter {
         }
     }
 
-        /**
+    /**
      * Returns 200ish, 300ish, 400ish, or 500ish
      * @param status
      * @return
      */
     default int getStatusGroupCode(int status) {
-        return status - (status & 100);
+        return status - (status % 100);
     }
 
     /**
