@@ -1,54 +1,54 @@
 [
     {
-        title : '@@restDataListBinder.dataListBinder@@',
-        properties  :[
+        "title" : "@@restDataListBinder.dataListBinder@@",
+        "properties"  :[
             {
-                name : 'url',
-                label : '@@restDataListBinder.apiUrl@@',
-                type : 'textfield',
-                required : 'true'
+                "name" : "url",
+                "label" : "@@restDataListBinder.apiUrl@@",
+                "type" : "textfield",
+                "required" : "true"
             }, {
-                name : 'parameters',
-                label : '@@restDataListBinder.parameters@@',
-                type : 'grid',
-                description : '@@restDataListBinder.apiUrl.description@@',
-                columns : [{
-                    key : 'key', label : '@@restDataListBinder.key@@'
+                "name" : "parameters",
+                "label" : "@@restDataListBinder.parameters@@",
+                "type" : "grid",
+                "description" : "@@restDataListBinder.apiUrl.description@@",
+                "columns" : [{
+                    "key" : "key", "label" : "@@restDataListBinder.key@@"
                 }, {
-                    key : 'value', label : '@@restDataListBinder.value@@'
+                    "key" : "value", "label" : "@@restDataListBinder.value@@"
                 }]
             }, {
-                name : 'headers',
-                label : '@@restDataListBinder.headers@@',
-                type : 'grid',
-                columns : [{
-                    key : 'key', label : '@@restDataListBinder.key@@'
+                "name" : "headers",
+                "label" : "@@restDataListBinder.headers@@",
+                "type" : "grid",
+                "columns" : [{
+                    "key" : "key", "label" : "@@restDataListBinder.key@@"
                 }, {
-                    key : 'value', label : '@@restDataListBinder.value@@'
+                    "key" : "value", "label" : "@@restDataListBinder.value@@"
                 }]
             }, {
-                name : 'recordPath',
-                label : '@@restDataListBinder.recordPath@@',
-                type : 'textfield'
+                "name" : "recordPath",
+                "label" : "@@restDataListBinder.recordPath@@",
+                "type" : "textfield"
             }, {
-                name : 'primaryKey',
-                label : '@@restDataListBinder.primaryKey@@',
-                required : 'true',
-                type : 'textfield'
+                "name" : "primaryKey",
+                "label" : "@@restDataListBinder.primaryKey@@",
+                "required" : "true",
+                "type" : "textfield"
             }
         ]
     },
     {
-        title : '@@restDataListBinder.security@@',
-        properties : [
+        "title" : "@@restDataListBinder.security@@",
+        "properties" : [
             {
-                name : 'ignoreCertificateError',
-                label : '@@restDataListBinder.ignoreCertificateError@@',
-                type : 'checkbox',
-                options : [
+                "name" : "ignoreCertificateError",
+                "label" : "@@restDataListBinder.ignoreCertificateError@@",
+                "type" : "checkbox",
+                "options" : [
                     {
-                        value : 'true',
-                        label : ''
+                        "value" : "true",
+                        "label" : ""
                     }
                 ]
             }

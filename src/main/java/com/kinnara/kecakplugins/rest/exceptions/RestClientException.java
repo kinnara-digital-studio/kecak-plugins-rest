@@ -5,7 +5,7 @@ package com.kinnara.kecakplugins.rest.exceptions;
  *
  * Rest Client Exception
  */
-public class RestClientException extends Exception{
+public class RestClientException extends Exception {
     public RestClientException(Throwable cause) {
         super(cause);
     }

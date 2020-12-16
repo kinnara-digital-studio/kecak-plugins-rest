@@ -1,6 +1,8 @@
 package com.kinnara.kecakplugins.rest.commons;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.stream.JsonReader;
 import com.kinnara.kecakplugins.rest.exceptions.RestClientException;
@@ -17,16 +19,27 @@ import org.apache.http.entity.mime.MultipartEntityBuilder;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.ssl.SSLContextBuilder;
+import org.joget.apps.app.dao.DatalistDefinitionDao;
+import org.joget.apps.app.dao.FormDefinitionDao;
+import org.joget.apps.app.model.AppDefinition;
+import org.joget.apps.app.model.DatalistDefinition;
+import org.joget.apps.app.model.FormDefinition;
 import org.joget.apps.app.service.AppService;
 import org.joget.apps.app.service.AppUtil;
+import org.joget.apps.datalist.model.*;
+import org.joget.apps.datalist.service.DataListService;
+import org.joget.apps.form.model.Form;
 import org.joget.apps.form.model.FormRow;
 import org.joget.apps.form.model.FormRowSet;
+import org.joget.apps.form.service.FormService;
 import org.joget.commons.util.LogUtil;
 import org.joget.plugin.base.PluginManager;
 import org.joget.plugin.property.model.PropertyEditable;
 import org.joget.workflow.model.WorkflowAssignment;
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.springframework.context.ApplicationContext;
 import org.xml.sax.SAXException;
 
 import javax.annotation.Nonnull;
@@ -44,7 +57,9 @@ import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -54,6 +69,8 @@ import static org.apache.http.entity.mime.HttpMultipartMode.BROWSER_COMPATIBLE;
  * @author aristo
  */
 public interface RestMixin extends PropertyEditable, Unclutter {
+    Map<String, Form> formCache = new HashMap<>();
+
     /**
      * Get property "method"
      *
@@ -212,19 +229,19 @@ public interface RestMixin extends PropertyEditable, Unclutter {
      *
      * @param jsonString
      * @param assignment
-     * @param formRow
+     * @param variables
      * @return
      * @throws RestClientException
      */
-    default HttpEntity getJsonRequestEntity(@Nullable String jsonString, @Nullable WorkflowAssignment assignment, @Nullable FormRow formRow) throws RestClientException {
+    default HttpEntity getJsonRequestEntity(@Nullable String jsonString, @Nullable WorkflowAssignment assignment, @Nullable Map<String, Object> variables) throws RestClientException {
         if(jsonString == null || jsonString.isEmpty()) {
             return null;
         }
 
         try {
-            return getJsonRequestEntity(new JSONObject(jsonString), assignment, formRow);
-        } catch (JSONException e) {
-            throw new RestClientException(e);
+            return getJsonRequestEntity(new JSONObject(jsonString), assignment, variables);
+        } catch (JSONException e1) {
+            throw new RestClientException(e1);
         }
     }
 
@@ -233,16 +250,20 @@ public interface RestMixin extends PropertyEditable, Unclutter {
      *
      * @param json
      * @param assignment
-     * @param formRow
+     * @param variables
      * @return
      */
     @Nullable
-    default HttpEntity getJsonRequestEntity(@Nullable JSONObject json, @Nullable WorkflowAssignment assignment, @Nullable FormRow formRow) {
+    default HttpEntity getJsonRequestEntity(@Nullable JSONObject json, @Nullable WorkflowAssignment assignment, @Nullable Map<String, Object> variables) {
         if(json == null) {
             return null;
         }
 
-        String body = variableInterpolation(AppUtil.processHashVariable(json.toString(), assignment, null, null), formRow);
+        return getRequestEntity(json.toString(), assignment, variables);
+    }
+
+    default HttpEntity getRequestEntity(@Nonnull String content, @Nullable WorkflowAssignment assignment, @Nullable Map<String, Object> variables) {
+        String body = variableInterpolation(AppUtil.processHashVariable(content, assignment, null, null), variables);
 
         if(isNotEmpty(body)) {
             return new StringEntity(body, ContentType.APPLICATION_JSON);
@@ -256,16 +277,16 @@ public interface RestMixin extends PropertyEditable, Unclutter {
      *
      * @param multipart
      * @param assignment
-     * @param row
+     * @param variables
      * @return
      */
-    default HttpEntity getMultipartRequestEntity(Map<String, String> multipart, @Nullable WorkflowAssignment assignment, @Nullable FormRow row) {
+    default HttpEntity getMultipartRequestEntity(Map<String, String> multipart, @Nullable WorkflowAssignment assignment, @Nullable Map<String, Object> variables) {
         final MultipartEntityBuilder builder = MultipartEntityBuilder.create();
 
         builder.setMode(BROWSER_COMPATIBLE);
 
         multipart.forEach((k, v) -> {
-            String value = Optional.ofNullable(row).map(r -> variableInterpolation(String.valueOf(v), r)).orElse(v);
+            String value = Optional.ofNullable(variables).map(r -> variableInterpolation(String.valueOf(v), r)).orElse(v);
             builder.addTextBody(k, value);
         });
 
@@ -280,29 +301,28 @@ public interface RestMixin extends PropertyEditable, Unclutter {
      * @throws RestClientException
      */
     default HttpEntity getRequestEntity(@Nullable WorkflowAssignment assignment) throws RestClientException {
-        return getRequestEntity(assignment, (FormRow)null);
+        return getRequestEntity(assignment, (Map<String, Object>) null);
     }
 
     /**
      * Get request entity
      *
      * @param assignment
-     * @param rowSet
+     * @param variables
      * @return
      * @throws RestClientException
      */
-    default HttpEntity getRequestEntity(@Nullable WorkflowAssignment assignment, @Nullable FormRowSet rowSet) throws RestClientException {
-        FormRow row = Optional.ofNullable(rowSet)
-                .map(Collection::stream)
-                .orElseGet(Stream::empty)
-                .findFirst()
-                .orElse(null);
-
-        return getRequestEntity(assignment, row);
+    default HttpEntity getRequestEntity(@Nullable WorkflowAssignment assignment, @Nullable Map<String, Object> variables) throws RestClientException {
+        if(isJsonRequest()) {
+            return getJsonRequestEntity(getPropertyBody(), assignment, variables);
+        } else if(isMultipartRequest()) {
+            return getMultipartRequestEntity(getPropertyFormData(assignment), assignment, variables);
+        } else {
+            return null;
+        }
     }
 
     /**
-     * Get request entity
      *
      * @param assignment
      * @param row
@@ -310,13 +330,25 @@ public interface RestMixin extends PropertyEditable, Unclutter {
      * @throws RestClientException
      */
     default HttpEntity getRequestEntity(@Nullable WorkflowAssignment assignment, @Nullable FormRow row) throws RestClientException {
-        if(isJsonRequest()) {
-            return getJsonRequestEntity(getPropertyBody(), assignment, row);
-        } else if(isMultipartRequest()) {
-            return getMultipartRequestEntity(getPropertyFormData(assignment), assignment, row);
-        } else {
-            return null;
-        }
+        Map<String, Object> variables = Optional.ofNullable(row)
+                .map(Hashtable::entrySet)
+                .map(Collection::stream)
+                .orElseGet(Stream::empty)
+                .collect(Collectors.toMap(e -> e.getKey().toString(), Map.Entry::getValue));
+
+        return getRequestEntity(assignment, variables);
+    }
+
+    /**
+     *
+     * @param assignment
+     * @param rows
+     * @return
+     * @throws RestClientException
+     */
+    default HttpEntity getRequestEntity(@Nullable WorkflowAssignment assignment, @Nullable FormRowSet rows) throws RestClientException {
+        FormRow row = rows == null || rows.isEmpty() ? null : rows.get(0);
+        return getRequestEntity(assignment, row);
     }
 
     /**
@@ -627,19 +659,19 @@ public interface RestMixin extends PropertyEditable, Unclutter {
      * Variable interpolation
      *
      * @param content
-     * @param formRow
+     * @param variables
      * @return
      */
-    default String variableInterpolation(String content, @Nullable FormRow formRow) {
+    default String variableInterpolation(String content, @Nullable Map<String, Object> variables) {
         if(isDebug()) {
             LogUtil.info(getClassName(), "variableInterpolation : content ["+content+"]");
         }
 
-        if(formRow == null) {
+        if(variables == null) {
             return content;
         }
 
-        for (Map.Entry<Object, Object> e : formRow.entrySet()) {
+        for (Map.Entry<String, Object> e : variables.entrySet()) {
             content = content.replaceAll("\\$\\{" + e.getKey() + "}", String.valueOf(e.getValue()));
         }
 
@@ -717,4 +749,261 @@ public interface RestMixin extends PropertyEditable, Unclutter {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Generate {@link DataList} by ID
+     *
+     * @param datalistId
+     * @return
+     * @throws RestClientException
+     */
+    @Nonnull
+    default DataList generateDataList(String datalistId) throws RestClientException {
+        return generateDataList(datalistId, null);
+    }
+
+    /**
+     * Generate {@link DataList} by ID
+     *
+     * @param datalistId
+     * @return
+     * @throws RestClientException
+     */
+    @Nonnull
+    default DataList generateDataList(String datalistId, WorkflowAssignment workflowAssignment) throws RestClientException {
+        ApplicationContext appContext = AppUtil.getApplicationContext();
+        AppDefinition appDef = AppUtil.getCurrentAppDefinition();
+
+        DataListService dataListService = (DataListService) appContext.getBean("dataListService");
+        DatalistDefinitionDao datalistDefinitionDao = (DatalistDefinitionDao) appContext.getBean("datalistDefinitionDao");
+        DatalistDefinition datalistDefinition = datalistDefinitionDao.loadById(datalistId, appDef);
+
+        return Optional.ofNullable(datalistDefinition)
+                .map(DatalistDefinition::getJson)
+                .map(s -> processHashVariable(s, workflowAssignment))
+                .map(dataListService::fromJson)
+                .orElseThrow(() -> new RestClientException("DataList [" + datalistId + "] not found"));
+    }
+
+    /**
+     * Get DataList row as JSONObject
+     *
+     * @param dataListId
+     * @return
+     */
+
+    @Nonnull
+    default JSONObject getDataListRow(String dataListId, @Nonnull final Map<String, List<String>> filters) throws RestClientException {
+        DataList dataList = generateDataList(dataListId);
+
+        getCollectFilters(dataList, filters);
+
+        DataListCollection<Map<String, Object>> rows = dataList.getRows();
+        if (rows == null) {
+            throw new RestClientException("Error retrieving row from dataList [" + dataListId + "]");
+        }
+
+        JSONArray jsonArrayData = Optional.of(dataList)
+                .map(DataList::getRows)
+                .map(r -> (DataListCollection<Map<String, Object>>)r)
+                .map(Collection::stream)
+                .orElseGet(Stream::empty)
+                .map(m -> formatRow(dataList, m))
+                .map(JSONObject::new)
+                .collect(Collector.of(JSONArray::new, JSONArray::put, JSONArray::put));
+
+        JSONObject jsonResult = new JSONObject();
+        try {
+            jsonResult.put("data", jsonArrayData);
+        } catch (JSONException e) {
+            throw new RestClientException(e);
+        }
+
+        return jsonResult;
+    }
+
+    /**
+     * Get collect filters
+     *
+     * @param dataList Input/Output parameter
+     */
+    default void getCollectFilters(@Nonnull final DataList dataList, @Nonnull final Map<String, List<String>> filters) {
+        Optional.of(dataList)
+                .map(DataList::getFilters)
+                .map(Arrays::stream)
+                .orElseGet(Stream::empty)
+                .filter(f -> Optional.of(f)
+                        .map(DataListFilter::getName)
+                        .map(filters::get)
+                        .map(l -> !l.isEmpty())
+                        .orElse(false))
+                .forEach(f -> f.getType().setProperty("defaultValue", String.join(";", filters.get(f.getName()))));
+
+        dataList.getFilterQueryObjects();
+        dataList.setFilters(null);
+    }
+
+    /**
+     * Format Row
+     *
+     * @param dataList
+     * @param row
+     * @return
+     */
+    @Nonnull
+    default Map<String, Object> formatRow(@Nonnull DataList dataList, @Nonnull final Map<String, Object> row) {
+        return Optional.of(dataList)
+                .map(DataList::getColumns)
+                .map(Arrays::stream)
+                .orElseGet(Stream::empty)
+                .filter(Objects::nonNull)
+                .filter(not(DataListColumn::isHidden))
+                .map(DataListColumn::getName)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toMap(s -> s, s -> formatValue(dataList, row, s)));
+    }
+
+    /**
+     * Format
+     *
+     * @param dataList DataList
+     * @param row      Row
+     * @param field    Field
+     * @return
+     */
+    @Nonnull
+    default String formatValue(@Nonnull final DataList dataList, @Nonnull final Map<String, Object> row, String field) {
+        String value = Optional.of(field)
+                .map(row::get)
+                .map(String::valueOf)
+                .orElse("");
+
+        return Optional.of(dataList)
+                .map(DataList::getColumns)
+                .map(Arrays::stream)
+                .orElseGet(Stream::empty)
+                .filter(Objects::nonNull)
+                .filter(c -> field.equals(c.getName()))
+                .findFirst()
+                .map(column -> Optional.of(column)
+                        .map(throwableFunction(DataListColumn::getFormats))
+                        .map(Collection::stream)
+                        .orElseGet(Stream::empty)
+                        .filter(Objects::nonNull)
+                        .findFirst()
+                        .map(f -> f.format(dataList, column, row, value))
+                        .map(s -> s.replaceAll("<[^>]*>", ""))
+                        .orElse(value))
+                .orElse(value);
+    }
+
+    /**
+     *
+     * @param formDefId
+     * @return
+     */
+    @Nonnull
+    default Form generateForm(String formDefId) throws RestClientException {
+        ApplicationContext appContext = AppUtil.getApplicationContext();
+        FormService formService = (FormService) appContext.getBean("formService");
+        FormDefinitionDao formDefinitionDao = (FormDefinitionDao)appContext.getBean("formDefinitionDao");
+
+        // check in cache
+        if(formCache.containsKey(formDefId))
+            return formCache.get(formDefId);
+
+        // proceed without cache
+        AppDefinition appDef = AppUtil.getCurrentAppDefinition();
+        if (appDef != null && formDefId != null && !formDefId.isEmpty()) {
+            FormDefinition formDef = formDefinitionDao.loadById(formDefId, appDef);
+            if (formDef != null) {
+                String json = formDef.getJson();
+                Form form = (Form)formService.createElementFromJson(json);
+
+                // put in cache if possible
+                formCache.put(formDefId, form);
+
+                return form;
+            }
+        }
+
+        throw new RestClientException("Error generating form [" + formDefId + "]");
+    }
+
+    default FormRow generateFormRow(DataList dataList, Map<String, Object> input) {
+        String idField = Optional.of(dataList)
+                .map(DataList::getBinder)
+                .map(DataListBinder::getPrimaryKeyColumnName)
+                .orElse("id");
+
+        return Optional.ofNullable(input)
+                .map(Map::entrySet)
+                .map(Collection::stream)
+                .orElseGet(Stream::empty)
+                .collect(() -> {
+                    FormRow row = new FormRow();
+                    row.setId(input.getOrDefault(idField, "").toString());
+                    return row;
+                }, (r, e) -> r.setProperty(e.getKey(), e.getValue().toString()), FormRow::putAll);
+    }
+
+    /**
+     *
+     * @param path
+     * @param element
+     * @param recordPattern
+     * @param fieldPattern
+     * @param isLookingForRecordPattern
+     * @param rowSet
+     * @param row
+     * @param foreignKeyField
+     * @param primaryKey
+     */
+    default void parseJson(String path, @Nonnull JsonElement element, @Nonnull Pattern recordPattern, @Nonnull Map<String, Pattern> fieldPattern, boolean isLookingForRecordPattern, @Nonnull final FormRowSet rowSet, @Nullable FormRow row, final String foreignKeyField, final String primaryKey) {
+        Matcher matcher = recordPattern.matcher(path);
+        boolean isRecordPath = matcher.find() && isLookingForRecordPattern && element.isJsonObject();
+
+        if(isRecordPath) {
+            // start looking for value and label pattern
+            row = new FormRow();
+        }
+
+        if(element.isJsonObject()) {
+            parseJsonObject(path, (JsonObject)element, recordPattern, fieldPattern, !isRecordPath && isLookingForRecordPattern, rowSet, row, foreignKeyField, primaryKey);
+            if(isRecordPath) {
+                if(foreignKeyField != null && !foreignKeyField.isEmpty())
+                    row.setProperty(foreignKeyField, primaryKey);
+                rowSet.add(row);
+            }
+        } else if(element.isJsonArray()) {
+            parseJsonArray(path, (JsonArray)element, recordPattern, fieldPattern, !isRecordPath && isLookingForRecordPattern, rowSet, row, foreignKeyField, primaryKey);
+            if(isRecordPath) {
+                if(foreignKeyField != null && !foreignKeyField.isEmpty())
+                    row.setProperty(foreignKeyField, primaryKey);
+                rowSet.add(row);
+            }
+        } else if(element.isJsonPrimitive() && !isLookingForRecordPattern) {
+            for(Map.Entry<String, Pattern> entry : fieldPattern.entrySet()) {
+                setRow(entry.getValue().matcher(path), entry.getKey(), element.getAsString(), row);
+            }
+        }
+    }
+
+    default void setRow(Matcher matcher, String key, String value, FormRow row) {
+        if(matcher.find() && row != null && row.getProperty(key) == null) {
+            row.setProperty(key, value);
+        }
+    }
+
+    default void parseJsonObject(String path, JsonObject json, Pattern recordPattern, Map<String, Pattern> fieldPattern, boolean isLookingForRecordPattern, FormRowSet rowSet, FormRow row, String foreignKeyField, String primaryKey) {
+        for(Map.Entry<String, JsonElement> entry : json.entrySet()) {
+            parseJson(path + "." + entry.getKey(), entry.getValue(), recordPattern, fieldPattern, isLookingForRecordPattern, rowSet, row, foreignKeyField, primaryKey);
+        }
+    }
+
+    default void parseJsonArray(String path, JsonArray json, Pattern recordPattern, Map<String, Pattern> fieldPattern, boolean isLookingForRecordPattern, FormRowSet rowSet, FormRow row, String foreignKeyField, String primaryKey) {
+        for(int i = 0, size = json.size(); i < size; i++) {
+            parseJson(path, json.get(i), recordPattern, fieldPattern, isLookingForRecordPattern, rowSet, row, foreignKeyField, primaryKey);
+        }
+    }
 }

@@ -1,0 +1,185 @@
+[
+  {
+    "title": "@@rest.editRequest@@",
+    "properties": [
+      {
+        "label": "@@rest.dataSource@@",
+        "type": "header"
+      },
+      {
+        "name" : "dataListId",
+        "label": "@@rest.dataList@@",
+        "type" : "selectbox",
+        "required" : "true",
+        "options_ajax" : "[CONTEXT_PATH]/web/json/console/app[APP_PATH]/datalist/options"
+      },
+      {
+        "name" : "dataListFilter",
+        "label": "@@rest.dataListFilter@@",
+        "type": "grid",
+        "columns" : [
+          {
+            "key": "name",
+            "label" : "@@rest.dataListFilter.name@@",
+            "required": "true"
+          },
+          {
+            "key" : "value",
+            "label" : "@@rest.dataListFilter.value@@"
+          }
+        ]
+      },
+      {
+        "label": "Request",
+        "type": "header"
+      },
+      {
+        "name" : "url",
+        "label" : "@@rest.apiUrl@@",
+        "type" : "textfield",
+        "required" : "True"
+      },
+      {
+        "name" : "method",
+        "label" : "@@rest.method@@",
+        "type" : "selectbox",
+        "options" : [
+          {
+            "value" : "GET",
+            "label" : "GET"
+          }, {
+            "value" : "POST",
+            "label" : "POST"
+          }, {
+            "value" : "PUT",
+            "label" : "PUT"
+          }, {
+            "value" : "DELETE",
+            "label" : "DELETE"
+          }
+        ]
+      },
+      {
+        "name" : "parameters",
+        "label" : "@@rest.parameters@@",
+        "type" : "grid",
+        "columns" : [
+          {
+            "key" : "key",
+            "label" : "@@rest.key@@",
+            "required" : "true"
+          },
+          {
+            "key" : "value",
+            "label" : "@@rest.value@@",
+            "required" : "true"
+          }
+        ]
+      },
+      {
+        "name" : "headers",
+        "label" : "@@rest.headers@@",
+        "type" : "grid",
+        "columns" : [
+          {
+            "key" : "key",
+            "label" : "@@rest.key@@",
+            "required" : "true"
+          },
+          {
+            "key" : "value",
+            "label" : "@@rest.value@@",
+            "required" : "true"
+          }
+        ]
+      },
+      {
+        "name" : "contentType",
+        "label" : "@@rest.contentType@@",
+        "type" : "selectbox",
+        "required" : "true",
+        "options" : [
+          {
+            "value" : "application/json",
+            "label" : "application/json"
+          }
+        ]
+      },
+      {
+        "name" : "body",
+        "label" : "@@rest.body@@",
+        "description" : "@@rest.body.description@@",
+        "type" : "CodeEditor",
+        "mode" : "json",
+        "control_field" : "method",
+        "control_value" : "POST|PUT",
+        "control_use_regex" : "true"
+      }
+    ]
+  },
+  {
+    "title" : "@@rest.editResponse@@",
+    "properties" : [
+      {
+        "label": "@@rest.formBinding@@",
+        "type": "header"
+      },
+      {
+        "name" : "formDefId",
+        "label" : "@@rest.formDefId@@",
+        "type" : "selectbox",
+        "options_ajax":"[CONTEXT_PATH]/web/json/console/app[APP_PATH]/forms/options",
+        "url" : "[CONTEXT_PATH]/web/property/json[APP_PATH]/getPropertyOptions"
+      },
+      {
+        "name" : "jsonRecordPath",
+        "label" : "@@rest.jsonRecordPath@@",
+        "type" : "textfield"
+      },
+      {
+        "name" : "fieldMapping",
+        "label" : "@@rest.fieldMapping@@",
+        "type" : "grid",
+        "columns" : [
+          {
+            "key" : "jsonPath",
+            "label" : "@@rest.jsonPath@@",
+            "required" : "true"
+          }, {
+            "key" : "formField",
+            "label" : "@@rest.formField@@",
+            "required" : "true"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title" : "@@rest.advanceSettings@@",
+    "properties" : [
+      {
+        "name" : "ignoreCertificateError",
+        "label" : "@@rest.ignoreCertificateError@@",
+        "type" : "checkbox",
+        "options" : [
+          {
+            "value" : "true",
+            "label" : ""
+          }
+        ]
+      },
+      {
+        "name" : "debug",
+        "label" : "@@rest.debug@@",
+        "description" : "@@rest.debug.desc@@",
+        "type" : "checkbox",
+        "options" : [
+          {
+            "value" : "true",
+            "label" : ""
+          }
+        ]
+      }
+    ]
+  }
+]

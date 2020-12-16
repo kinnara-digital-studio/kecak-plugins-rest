@@ -10,6 +10,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.*;
 import java.util.function.*;
+import java.util.stream.Collector;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -20,6 +21,51 @@ import java.util.stream.StreamSupport;
  * Common library to handle repetition code
  */
 public interface Unclutter {
+
+
+    /**
+     * Collector for JSONArray
+     *
+     * @param <T>
+     * @return
+     */
+    default <T> Collector<T, JSONArray, JSONArray> jsonCollector() {
+        return Collector.of(JSONArray::new, (array, t) -> {
+            if(t != null) {
+                array.put(t);
+            }
+
+        }, (left, right) -> {
+            jsonStream(right).forEach(throwableConsumer(left::put));
+            return left;
+        });
+    }
+
+    /**
+     * Collector for JSONObject
+     *
+     * @param keyExtractor
+     * @param valueExtractor
+     * @param <T>
+     * @param <V>
+     * @return
+     */
+    default <T, V> Collector<T, JSONObject, JSONObject> jsonCollector(Function<T, String> keyExtractor, Function<T, V> valueExtractor) {
+        Objects.requireNonNull(keyExtractor);
+        Objects.requireNonNull(valueExtractor);
+
+        return Collector.of(JSONObject::new, throwableBiConsumer((jsonObject, t) -> {
+            String key = keyExtractor.apply(t);
+            V value = valueExtractor.apply(t);
+
+            if (key != null && !key.isEmpty() && value != null) {
+                jsonObject.put(key, value);
+            }
+        }), (left, right) -> {
+            jsonStream(right).forEach(throwableConsumer(s -> left.put(s, right.get(s))));
+            return left;
+        });
+    }
 
     /**
      * Predicate not
