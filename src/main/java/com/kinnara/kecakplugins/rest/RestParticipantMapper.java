@@ -38,7 +38,7 @@ public class RestParticipantMapper extends DefaultParticipantPlugin implements R
 		try {
 			final String url = getPropertyUrl(workflowAssignment);
 			final HttpClient client = getHttpClient(isIgnoreCertificateError());
-			final HttpUriRequest request = getHttpRequest(workflowAssignment, url, getPropertyMethod(), getPropertyHeaders(workflowAssignment));
+			final HttpUriRequest request = getHttpRequest(workflowAssignment, url, getPropertyMethod(), getPropertyHeaders(workflowAssignment), null);
 			HttpResponse response = client.execute(request);
 
 			String responseContentType = getResponseContentType(response);

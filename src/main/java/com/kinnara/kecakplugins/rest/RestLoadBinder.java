@@ -15,6 +15,8 @@ import org.joget.workflow.model.service.WorkflowManager;
 import org.springframework.context.ApplicationContext;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.Map;
 
 /**
  * @author aristo
@@ -77,9 +79,10 @@ public class RestLoadBinder extends FormBinder implements FormLoadElementBinder,
 			String url = getPropertyUrl(workflowAssignment)
 					.replaceAll(":id", ifEmptyThen(primaryKey, ""));
 
+			final Map<String, String> variables = Collections.singletonMap("id", primaryKey);
 			final HttpClient client = getHttpClient(isIgnoreCertificateError());
-			final HttpEntity httpEntity = getRequestEntity(workflowAssignment);
-			final HttpUriRequest request = getHttpRequest(workflowAssignment, url, getPropertyMethod(), getPropertyHeaders(workflowAssignment), httpEntity);
+			final HttpEntity httpEntity = getRequestEntity(workflowAssignment, variables);
+			final HttpUriRequest request = getHttpRequest(workflowAssignment, url, getPropertyMethod(), getPropertyHeaders(workflowAssignment), httpEntity, variables);
 			final HttpResponse response = client.execute(request);
 			return handleResponse(response);
 		} catch (IOException | RestClientException e) {

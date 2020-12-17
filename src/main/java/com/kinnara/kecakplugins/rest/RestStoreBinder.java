@@ -15,6 +15,7 @@ import org.joget.workflow.model.service.WorkflowManager;
 import org.springframework.context.ApplicationContext;
 
 import java.io.IOException;
+import java.util.Map;
 
 /**
  * @author aristo
@@ -39,8 +40,7 @@ public class RestStoreBinder extends FormBinder implements FormStoreElementBinde
         String appId = appDef.getId();
         String appVersion = appDef.getVersion().toString();
         Object[] arguments = new Object[]{appId, appVersion, appId, appVersion, appId, appVersion};
-        String json = AppUtil.readPluginResource(this.getClass().getName(), "/properties/restStoreBinder.json", arguments, true, "message/Rest");
-        return json;
+        return AppUtil.readPluginResource(this.getClass().getName(), "/properties/restStoreBinder.json", arguments, true, "message/Rest");
     }
 
     public String getName() {
@@ -58,9 +58,9 @@ public class RestStoreBinder extends FormBinder implements FormStoreElementBinde
     /**
      * Store to REST API
      *
-     * @param element
-     * @param rowSet
-     * @param formData
+     * @param element Element
+     * @param rowSet FormRowSet
+     * @param formData FormData
      * @return
      */
     @Override
@@ -73,9 +73,10 @@ public class RestStoreBinder extends FormBinder implements FormStoreElementBinde
                 .replaceAll(":id", ifEmptyThen(formData.getPrimaryKeyValue(), ""));
 
         try {
+            final Map<String, String> variables = generateVariables(rowSet);
             final HttpClient client = getHttpClient(isIgnoreCertificateError());
-            final HttpEntity httpEntity = getRequestEntity(workflowAssignment, rowSet);
-            final HttpUriRequest request = getHttpRequest(workflowAssignment, url, getPropertyMethod(), getPropertyHeaders(workflowAssignment), httpEntity);
+            final HttpEntity httpEntity = getRequestEntity(workflowAssignment, variables);
+            final HttpUriRequest request = getHttpRequest(workflowAssignment, url, getPropertyMethod(), getPropertyHeaders(workflowAssignment), httpEntity, variables);
             final HttpResponse response = client.execute(request);
             return ifNullThen(handleResponse(response), rowSet);
         } catch (RestClientException | IOException e) {

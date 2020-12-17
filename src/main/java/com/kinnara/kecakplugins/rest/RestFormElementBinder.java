@@ -2,6 +2,7 @@ package com.kinnara.kecakplugins.rest;
 
 import com.kinnara.kecakplugins.rest.commons.RestMixin;
 import com.kinnara.kecakplugins.rest.exceptions.RestClientException;
+import org.apache.commons.collections.map.SingletonMap;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
@@ -14,6 +15,11 @@ import org.joget.workflow.model.service.WorkflowManager;
 import org.springframework.context.ApplicationContext;
 
 import java.io.IOException;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Stream;
 
 /**
  * @author aristo
@@ -41,9 +47,11 @@ public class RestFormElementBinder extends FormBinder implements FormLoadElement
             String url = getPropertyUrl(workflowAssignment)
                     .replaceAll(":id", ifEmptyThen(primaryKey, ""));
 
+            Map<String, String> variables = Collections.singletonMap("id", primaryKey);
+
             final HttpClient client = getHttpClient(isIgnoreCertificateError());
-            final HttpEntity httpEntity = getRequestEntity(workflowAssignment);
-            final HttpUriRequest request = getHttpRequest(workflowAssignment, url, getPropertyMethod(), getPropertyHeaders(workflowAssignment), httpEntity);
+            final HttpEntity httpEntity = getRequestEntity(workflowAssignment, variables);
+            final HttpUriRequest request = getHttpRequest(workflowAssignment, url, getPropertyMethod(), getPropertyHeaders(workflowAssignment), httpEntity, variables);
             final HttpResponse response = client.execute(request);
             return handleResponse(response);
         } catch (IOException | RestClientException e) {
@@ -71,9 +79,10 @@ public class RestFormElementBinder extends FormBinder implements FormLoadElement
                 .replaceAll(":id", ifEmptyThen(formData.getPrimaryKeyValue(), ""));
 
         try {
+            Map<String, String> variables = generateVariables(rowSet);
             final HttpClient client = getHttpClient(isIgnoreCertificateError());
-            final HttpEntity httpEntity = getRequestEntity(workflowAssignment, rowSet);
-            final HttpUriRequest request = getHttpRequest(workflowAssignment, url, getPropertyMethod(), getPropertyHeaders(workflowAssignment), httpEntity);
+            final HttpEntity httpEntity = getRequestEntity(workflowAssignment, variables);
+            final HttpUriRequest request = getHttpRequest(workflowAssignment, url, getPropertyMethod(), getPropertyHeaders(workflowAssignment), httpEntity, variables);
             final HttpResponse response = client.execute(request);
             return ifNullThen(handleResponse(response), rowSet);
         } catch (RestClientException | IOException e) {

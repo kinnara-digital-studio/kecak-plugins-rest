@@ -69,9 +69,8 @@ public class DataListRestTool extends DefaultApplicationPlugin implements RestMi
 
                             LogUtil.info(getClassName(), "Executing rest API for primary key [" + primaryKeyValue + "]");
 
-                            final FormRow row = generateFormRow(dataList, m);
-                            final HttpEntity httpEntity = getRequestEntity(workflowAssignment, row);
-                            final HttpUriRequest request = getHttpRequest(workflowAssignment, url, getPropertyMethod(), getPropertyHeaders(workflowAssignment), httpEntity);
+                            final HttpEntity httpEntity = getRequestEntity(workflowAssignment, m);
+                            final HttpUriRequest request = getHttpRequest(workflowAssignment, url, getPropertyMethod(), getPropertyHeaders(workflowAssignment), httpEntity, m);
                             final HttpResponse response = client.execute(request);
 
                             HttpEntity entity = response.getEntity();

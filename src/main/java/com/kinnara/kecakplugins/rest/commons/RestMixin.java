@@ -140,7 +140,7 @@ public interface RestMixin extends PropertyEditable, Unclutter {
     /**
      * Get property "url" and "parameters" combined
      *
-     * @param assignment
+     * @param assignment WorkflowAssignment
      * @return
      */
     default String getPropertyUrl(WorkflowAssignment assignment) {
@@ -158,7 +158,7 @@ public interface RestMixin extends PropertyEditable, Unclutter {
     /**
      * Get property "body"
      *
-     * @return
+     * @return String
      */
     @Nonnull
     default String getPropertyBody() {
@@ -173,7 +173,8 @@ public interface RestMixin extends PropertyEditable, Unclutter {
     /**
      * Get grid property that contains "key" and "value"
      *
-     * @param propertyName
+     * @param assignment WorkflowAssignment
+     * @param propertyName String
      * @return
      */
     default Map<String, String> getKeyValueProperty(WorkflowAssignment assignment, String propertyName) {
@@ -227,48 +228,43 @@ public interface RestMixin extends PropertyEditable, Unclutter {
     /**
      * Get JSON request body
      *
-     * @param jsonString
-     * @param assignment
-     * @param variables
+     * @param entity String
+     * @param assignment WorkflowAssignment
+     * @param variables Map
      * @return
      * @throws RestClientException
      */
-    default HttpEntity getJsonRequestEntity(@Nullable String jsonString, @Nullable WorkflowAssignment assignment, @Nullable Map<String, Object> variables) throws RestClientException {
-        if(jsonString == null || jsonString.isEmpty()) {
-            return null;
-        }
-
-        try {
-            return getJsonRequestEntity(new JSONObject(jsonString), assignment, variables);
-        } catch (JSONException e1) {
-            throw new RestClientException(e1);
-        }
-    }
-
-    /**
-     * Get JSON request body
-     *
-     * @param json
-     * @param assignment
-     * @param variables
-     * @return
-     */
-    @Nullable
-    default HttpEntity getJsonRequestEntity(@Nullable JSONObject json, @Nullable WorkflowAssignment assignment, @Nullable Map<String, Object> variables) {
-        if(json == null) {
-            return null;
-        }
-
-        return getRequestEntity(json.toString(), assignment, variables);
-    }
-
-    default HttpEntity getRequestEntity(@Nonnull String content, @Nullable WorkflowAssignment assignment, @Nullable Map<String, Object> variables) {
-        String body = AppUtil.processHashVariable(variableInterpolation(content, variables), assignment, null, null);
+    default HttpEntity getJsonRequestEntity(String entity, WorkflowAssignment assignment, Map<String, String> variables) throws RestClientException {
+        String jsonString = verifyJsonString(entity);
+        String body = AppUtil.processHashVariable(variableInterpolation(jsonString, variables), assignment, null, null);
 
         if(isNotEmpty(body)) {
             return new StringEntity(body, ContentType.APPLICATION_JSON);
         } else {
             return null;
+        }
+    }
+
+    /**
+     * Verify input string is JSON
+     *
+     * @param inputString
+     * @return
+     * @throws RestClientException
+     */
+    default String verifyJsonString(String inputString) throws RestClientException {
+        try {
+            return new JSONObject(inputString).toString();
+        } catch (JSONException jsonException) {
+            try {
+                return new JSONArray(inputString).toString();
+            } catch (JSONException jsonArrayException) {
+                if(isDebug()) {
+                    throw new RestClientException("Invalid json : " + inputString);
+                } else {
+                    throw new RestClientException("Invalid json");
+                }
+            }
         }
     }
 
@@ -280,7 +276,7 @@ public interface RestMixin extends PropertyEditable, Unclutter {
      * @param variables
      * @return
      */
-    default HttpEntity getMultipartRequestEntity(Map<String, String> multipart, @Nullable WorkflowAssignment assignment, @Nullable Map<String, Object> variables) {
+    default HttpEntity getMultipartRequestEntity(Map<String, String> multipart, @Nullable WorkflowAssignment assignment, @Nullable Map<String, String> variables) {
         final MultipartEntityBuilder builder = MultipartEntityBuilder.create();
 
         builder.setMode(BROWSER_COMPATIBLE);
@@ -297,22 +293,11 @@ public interface RestMixin extends PropertyEditable, Unclutter {
      * Get request entity
      *
      * @param assignment
-     * @return
-     * @throws RestClientException
-     */
-    default HttpEntity getRequestEntity(@Nullable WorkflowAssignment assignment) throws RestClientException {
-        return getRequestEntity(assignment, (Map<String, Object>) null);
-    }
-
-    /**
-     * Get request entity
-     *
-     * @param assignment
      * @param variables
      * @return
      * @throws RestClientException
      */
-    default HttpEntity getRequestEntity(@Nullable WorkflowAssignment assignment, @Nullable Map<String, Object> variables) throws RestClientException {
+    default HttpEntity getRequestEntity(@Nullable WorkflowAssignment assignment, @Nullable Map<String, String> variables) throws RestClientException {
         if(isJsonRequest()) {
             return getJsonRequestEntity(getPropertyBody(), assignment, variables);
         } else if(isMultipartRequest()) {
@@ -322,33 +307,21 @@ public interface RestMixin extends PropertyEditable, Unclutter {
         }
     }
 
-    /**
-     *
-     * @param assignment
-     * @param row
-     * @return
-     * @throws RestClientException
-     */
-    default HttpEntity getRequestEntity(@Nullable WorkflowAssignment assignment, @Nullable FormRow row) throws RestClientException {
-        Map<String, Object> variables = Optional.ofNullable(row)
+    default Map<String, String> generateVariables(FormRowSet rowSet) {
+        return Optional.ofNullable(rowSet)
+                .map(Collection::stream)
+                .orElseGet(Stream::empty)
+                .findFirst()
+                .map(this::generateVariables)
+                .orElse(Collections.emptyMap());
+    }
+
+    default Map<String, String> generateVariables(FormRow row) {
+        return Optional.ofNullable(row)
                 .map(Hashtable::entrySet)
                 .map(Collection::stream)
                 .orElseGet(Stream::empty)
-                .collect(Collectors.toMap(e -> e.getKey().toString(), Map.Entry::getValue));
-
-        return getRequestEntity(assignment, variables);
-    }
-
-    /**
-     *
-     * @param assignment
-     * @param rows
-     * @return
-     * @throws RestClientException
-     */
-    default HttpEntity getRequestEntity(@Nullable WorkflowAssignment assignment, @Nullable FormRowSet rows) throws RestClientException {
-        FormRow row = rows == null || rows.isEmpty() ? null : rows.get(0);
-        return getRequestEntity(assignment, row);
+                .collect(Collectors.toMap(e -> e.getKey().toString(), e -> e.getValue().toString()));
     }
 
     /**
@@ -374,8 +347,8 @@ public interface RestMixin extends PropertyEditable, Unclutter {
         }
     }
 
-    default HttpUriRequest getHttpRequest(String url, String method, Map<String, String> headers) throws RestClientException {
-        return getHttpRequest(null, url, method, headers);
+    default HttpUriRequest getHttpRequest(String url, String method, Map<String, String> headers, Map<String, String> variables) throws RestClientException {
+        return getHttpRequest(null, url, method, headers, variables);
     }
 
     /**
@@ -385,19 +358,20 @@ public interface RestMixin extends PropertyEditable, Unclutter {
      * @param url
      * @param method
      * @param headers
+     * @param variables
      * @return
      * @throws RestClientException
      */
-    default HttpUriRequest getHttpRequest(WorkflowAssignment assignment, String url, String method, Map<String, String> headers) throws RestClientException {
+    default HttpUriRequest getHttpRequest(WorkflowAssignment assignment, String url, String method, Map<String, String> headers, Map<String, String> variables) throws RestClientException {
         @Nullable HttpEntity httpEntity;
         if(isJsonRequest()) {
-            httpEntity = getJsonRequestEntity(getPropertyBody(), assignment, null);
+            httpEntity = getJsonRequestEntity(getPropertyBody(), assignment, variables);
         } else if(isMultipartRequest()) {
-            httpEntity = getMultipartRequestEntity(getPropertyFormData(assignment), assignment, null);
+            httpEntity = getMultipartRequestEntity(getPropertyFormData(assignment), assignment, variables);
         } else {
             httpEntity = null;
         }
-        return getHttpRequest(assignment, url, method, headers, httpEntity);
+        return getHttpRequest(assignment, url, method, headers, httpEntity, variables);
     }
 
     /**
@@ -411,8 +385,11 @@ public interface RestMixin extends PropertyEditable, Unclutter {
      * @return
      * @throws RestClientException
      */
-    default HttpUriRequest getHttpRequest(WorkflowAssignment assignment, String url, String method, Map<String, String> headers, @Nullable HttpEntity httpEntity) throws RestClientException {
+    default HttpUriRequest getHttpRequest(WorkflowAssignment assignment, String url, String method, Map<String, String> headers, @Nullable HttpEntity httpEntity, Map<String, String> variables) throws RestClientException {
         final HttpRequestBase request;
+
+        url = variableInterpolation(url, variables);
+
         if("GET".equals(method)) {
             request = new HttpGet(url);
         } else if("POST".equals(method)) {
@@ -425,7 +402,7 @@ public interface RestMixin extends PropertyEditable, Unclutter {
             throw new RestClientException("Method [" + method + "] not supported");
         }
 
-        headers.forEach((k, v) -> request.addHeader(k, AppUtil.processHashVariable(v, assignment, null, null)));
+        headers.forEach((k, v) -> request.addHeader(k, AppUtil.processHashVariable(variableInterpolation(v, variables), assignment, null, null)));
 
         if(httpEntity != null && request instanceof HttpEntityEnclosingRequestBase) {
             ((HttpEntityEnclosingRequestBase) request).setEntity(httpEntity);
@@ -545,8 +522,8 @@ public interface RestMixin extends PropertyEditable, Unclutter {
     /**
      * Response is JSON
      *
-     * @param response
-     * @return
+     * @param response HttpResponse
+     * @return boolean
      * @throws RestClientException
      */
     default boolean isJsonResponse(@Nonnull HttpResponse response) throws RestClientException {
@@ -556,7 +533,7 @@ public interface RestMixin extends PropertyEditable, Unclutter {
     /**
      * Response is XML
      *
-     * @param response
+     * @param response HttpResponse
      * @return
      * @throws RestClientException
      */
@@ -662,7 +639,7 @@ public interface RestMixin extends PropertyEditable, Unclutter {
      * @param variables
      * @return
      */
-    default String variableInterpolation(String content, @Nullable Map<String, Object> variables) {
+    default String variableInterpolation(String content, @Nullable Map<String, String> variables) {
         if(isDebug()) {
             LogUtil.info(getClassName(), "variableInterpolation : content ["+content+"]");
         }
@@ -671,7 +648,7 @@ public interface RestMixin extends PropertyEditable, Unclutter {
             return content;
         }
 
-        for (Map.Entry<String, Object> e : variables.entrySet()) {
+        for (Map.Entry<String, String> e : variables.entrySet()) {
             content = content.replaceAll("\\$\\{" + e.getKey() + "}", String.valueOf(e.getValue()));
         }
 
@@ -850,7 +827,7 @@ public interface RestMixin extends PropertyEditable, Unclutter {
      * @return
      */
     @Nonnull
-    default Map<String, Object> formatRow(@Nonnull DataList dataList, @Nonnull final Map<String, Object> row) {
+    default Map<String, String> formatRow(@Nonnull DataList dataList, @Nonnull final Map<String, Object> row) {
         return Optional.of(dataList)
                 .map(DataList::getColumns)
                 .map(Arrays::stream)

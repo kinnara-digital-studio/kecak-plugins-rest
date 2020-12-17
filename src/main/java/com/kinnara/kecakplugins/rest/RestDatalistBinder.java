@@ -154,7 +154,7 @@ public class RestDatalistBinder extends DataListBinderDefault implements RestMix
         try {            
             final String url = getPropertyUrl();
 			final HttpClient client = getHttpClient(isIgnoreCertificateError());
-            final HttpUriRequest request = getHttpRequest(url, getPropertyMethod(), getPropertyHeaders());
+            final HttpUriRequest request = getHttpRequest(url, getPropertyMethod(), getPropertyHeaders(), null);
 
             // kirim request ke server
             HttpResponse response = client.execute(request);

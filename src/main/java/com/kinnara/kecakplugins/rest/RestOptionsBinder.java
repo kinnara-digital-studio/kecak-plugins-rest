@@ -75,7 +75,7 @@ public class RestOptionsBinder extends FormBinder implements FormLoadOptionsBind
             
             final String url = getPropertyUrl(wfAssignment);
             final HttpClient client = getHttpClient(isIgnoreCertificateError());
-            final HttpUriRequest request = getHttpRequest(wfAssignment, url, getPropertyMethod(), getPropertyHeaders(wfAssignment));
+            final HttpUriRequest request = getHttpRequest(wfAssignment, url, getPropertyMethod(), getPropertyHeaders(wfAssignment), null);
             final HttpResponse response = client.execute(request);
 
             if(response.getStatusLine().getStatusCode() != HttpServletResponse.SC_OK) {

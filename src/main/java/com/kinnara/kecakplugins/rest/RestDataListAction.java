@@ -84,9 +84,8 @@ public class RestDataListAction extends DataListActionDefault implements RestMix
 
                             LogUtil.info(getClassName(), "Executing rest API for primary key [" + primaryKeyValue + "]");
 
-                            final FormRow row = generateFormRow(dataList, m);
-                            final HttpEntity httpEntity = getRequestEntity(null, row);
-                            final HttpUriRequest request = getHttpRequest(null, url, getPropertyMethod(), getPropertyHeaders(), httpEntity);
+                            final HttpEntity httpEntity = getRequestEntity(null, m);
+                            final HttpUriRequest request = getHttpRequest(null, url, getPropertyMethod(), getPropertyHeaders(), httpEntity, m);
                             final HttpResponse response = client.execute(request);
 
                             HttpEntity entity = response.getEntity();

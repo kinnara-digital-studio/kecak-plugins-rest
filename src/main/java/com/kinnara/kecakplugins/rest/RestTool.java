@@ -77,8 +77,8 @@ public class RestTool extends DefaultApplicationPlugin implements RestMixin, Unc
 			try {
 				final String url = getPropertyUrl(workflowAssignment);
 				final HttpClient client = getHttpClient(isIgnoreCertificateError());
-				final HttpEntity httpEntity = getRequestEntity(workflowAssignment);
-				final HttpUriRequest request = getHttpRequest(workflowAssignment, url, getPropertyMethod(), getPropertyHeaders(workflowAssignment), httpEntity);
+				final HttpEntity httpEntity = getRequestEntity(workflowAssignment, null);
+				final HttpUriRequest request = getHttpRequest(workflowAssignment, url, getPropertyMethod(), getPropertyHeaders(workflowAssignment), httpEntity, null);
 				final HttpResponse response = client.execute(request);
 
 				HttpEntity entity = response.getEntity();
