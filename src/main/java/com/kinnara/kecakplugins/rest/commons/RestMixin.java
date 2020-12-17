@@ -263,7 +263,7 @@ public interface RestMixin extends PropertyEditable, Unclutter {
     }
 
     default HttpEntity getRequestEntity(@Nonnull String content, @Nullable WorkflowAssignment assignment, @Nullable Map<String, Object> variables) {
-        String body = variableInterpolation(AppUtil.processHashVariable(content, assignment, null, null), variables);
+        String body = AppUtil.processHashVariable(variableInterpolation(content, variables), assignment, null, null);
 
         if(isNotEmpty(body)) {
             return new StringEntity(body, ContentType.APPLICATION_JSON);
