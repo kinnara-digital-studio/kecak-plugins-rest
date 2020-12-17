@@ -2,7 +2,6 @@ package com.kinnara.kecakplugins.rest;
 
 import com.kinnara.kecakplugins.rest.commons.RestMixin;
 import com.kinnara.kecakplugins.rest.exceptions.RestClientException;
-import org.apache.commons.collections.map.SingletonMap;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
@@ -15,11 +14,8 @@ import org.joget.workflow.model.service.WorkflowManager;
 import org.springframework.context.ApplicationContext;
 
 import java.io.IOException;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
-import java.util.Optional;
-import java.util.stream.Stream;
 
 /**
  * @author aristo
@@ -28,10 +24,10 @@ public class RestFormElementBinder extends FormBinder implements FormLoadElement
     /**
      * Load from REST API
      *
-     * @param element
-     * @param primaryKey
-     * @param formData
-     * @return
+     * @param element Element
+     * @param primaryKey String
+     * @param formData FormData
+     * @return FormRowSet
      */
     @Override
     public FormRowSet load(Element element, String primaryKey, FormData formData) {
@@ -64,10 +60,10 @@ public class RestFormElementBinder extends FormBinder implements FormLoadElement
     /**
      * Store to REST API
      *
-     * @param element
-     * @param rowSet
-     * @param formData
-     * @return
+     * @param element Element
+     * @param rowSet FormRowSet
+     * @param formData FormData
+     * @return FormRowSet
      */
     @Override
     public FormRowSet store(Element element, FormRowSet rowSet, FormData formData) {
