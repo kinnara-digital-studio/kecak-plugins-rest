@@ -18,6 +18,7 @@ import org.joget.apps.form.model.FormData;
 import org.joget.apps.form.model.FormRow;
 import org.joget.apps.form.model.FormRowSet;
 import org.joget.commons.util.LogUtil;
+import org.joget.commons.util.SetupManager;
 import org.joget.plugin.base.DefaultApplicationPlugin;
 import org.joget.workflow.model.WorkflowAssignment;
 
@@ -25,6 +26,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Pattern;
@@ -55,12 +57,17 @@ public class DataListRestTool extends DefaultApplicationPlugin implements RestMi
 
         try {
             DataList dataList = generateDataList(getPropertyString("dataListId"), workflowAssignment);
-            DataListCollection<Map<String, Object>> rows = Optional.of(dataList).map(DataList::getRows).orElseGet(DataListCollection::new);
+            Map<String, List<String>> filters = getPropertyDataListFilter(this, workflowAssignment);
+            getCollectFilters(dataList, filters);
+            DataListCollection<Map<String, Object>> rows = Optional.of(dataList)
+                    .map(DataList::getRows)
+                    .orElseGet(DataListCollection::new);
 
             final String url = getPropertyUrl(workflowAssignment);
             final HttpClient client = getHttpClient(isIgnoreCertificateError());
 
             rows.stream()
+                    .peek(m -> LogUtil.info(getClassName(), "rows id ["+m.get("id")+"] export_id ["+m.get("export_id")+"]"))
                     .map(m -> formatRow(dataList, m))
                     .forEach(m -> {
                         try {
@@ -121,8 +128,7 @@ public class DataListRestTool extends DefaultApplicationPlugin implements RestMi
                                     }
 
                                     FormRowSet result = new FormRowSet();
-                                    boolean isLookingForRecordPattern = true;
-                                    parseJson("", completeElement, recordPattern, fieldPattern, isLookingForRecordPattern, result, null, primaryKeyField, primaryKeyValue);
+                                    parseJson("", completeElement, recordPattern, fieldPattern, true, result, null, primaryKeyField, primaryKeyValue);
 
                                     if (isDebug()) {
                                         result.stream()
@@ -132,7 +138,16 @@ public class DataListRestTool extends DefaultApplicationPlugin implements RestMi
                                     }
 
                                     // save data to form
-                                    form.getStoreBinder().store(form, result, new FormData());
+                                    result.stream()
+                                            .findFirst()
+                                            .ifPresent(row -> {
+                                                FormData formData = new FormData();
+                                                formData.setPrimaryKeyValue(row.getId());
+                                                formData.setActivityId(workflowAssignment.getActivityId());
+                                                formData.setProcessId(workflowAssignment.getProcessId());
+
+                                                form.getStoreBinder().store(form, result, formData);
+                                            });
                                 }
                             }
                         } catch (JsonSyntaxException | RestClientException | IOException e) {

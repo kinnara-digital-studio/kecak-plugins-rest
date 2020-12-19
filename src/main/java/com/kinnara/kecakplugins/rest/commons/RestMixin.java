@@ -727,6 +727,46 @@ public interface RestMixin extends PropertyEditable, Unclutter {
     }
 
     /**
+     * Get property "dataListFilter"
+     *
+     * @param obj
+     * @return
+     */
+    default Map<String, List<String>> getPropertyDataListFilter(PropertyEditable obj, WorkflowAssignment workflowAssignment) {
+        final Map<String, List<String>> filters = Optional.of("dataListFilter")
+                .map(obj::getProperty)
+                .map(it -> (Object[]) it)
+                .map(Arrays::stream)
+                .orElseGet(Stream::empty)
+                .filter(Objects::nonNull)
+                .map(o -> (Map<String, Object>) o)
+                .map(m -> {
+                    Map<String, List<String>> map = new HashMap<>();
+                    String name = String.valueOf(m.get("name"));
+                    String value = Optional.of("value")
+                            .map(m::get)
+                            .map(String::valueOf)
+                            .map(s -> processHashVariable(s, workflowAssignment))
+                            .orElse("");
+
+                    map.put(name, Collections.singletonList(value));
+                    return map;
+                })
+                .map(Map::entrySet)
+                .flatMap(Set::stream)
+                .filter(Objects::nonNull)
+                .collect(
+                        Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> {
+                            List<String> result = new ArrayList<>(e1);
+                            result.addAll(e2);
+                            return result;
+                        })
+                );
+
+        return filters;
+    }
+
+    /**
      * Generate {@link DataList} by ID
      *
      * @param datalistId
