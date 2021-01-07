@@ -151,6 +151,78 @@
             "required" : "true"
           }
         ]
+      },
+      {
+        "label": "Success Status Indicator",
+        "type": "header"
+      },
+      {
+        "name": "successStatusPath",
+        "type": "textfield",
+        "label": "Success indicator path"
+      },
+      {
+        "name": "successStatusValue",
+        "type": "textfield",
+        "label": "Success indicator value"
+      },
+      {
+        "label": "Failed Status Indicator",
+        "type": "header"
+      },
+      {
+        "name": "failedStatusPath",
+        "type": "textfield",
+        "label": "Failed indicator path"
+      },
+      {
+        "name": "failedStatusValue",
+        "type": "textfield",
+        "label": "Failed indicator value"
+      }
+    ]
+  },
+  {
+    "title": "@@rest.status@@",
+    "properties" : [
+      {
+        "name": "statusVariable",
+        "label": "@@rest.statusVariable@@",
+        "type": "textfield",
+        "description": "@@rest.statusVariable.desc@@",
+        "value": "status"
+      },
+      {
+        "label": "@@rest.header.statusVariable@@",
+        "type": "header"
+      },
+      {
+        "name": "valueNoData",
+        "label": "@@rest.valueNoData@@",
+        "description" : "@@rest.valueNoData.desc@@",
+        "type": "textfield",
+        "value": "noData"
+      },
+      {
+        "name": "valueFullSuccess",
+        "label": "@@rest.valueFullSuccess@@",
+        "description" : "@@rest.valueFullSuccess.desc@@",
+        "type": "textfield",
+        "value": "allSuccess"
+      },
+      {
+        "name": "valuePartialSuccess",
+        "label": "@@rest.valuePartialSuccess@@",
+        "description" : "@@rest.valuePartialSuccess.desc@@",
+        "type": "textfield",
+        "value": "partialSuccess"
+      },
+      {
+        "name": "valueNoneSuccess",
+        "label": "@@rest.valueNoneSuccess@@",
+        "description" : "@@rest.valueNoneSuccess.desc@@",
+        "type": "textfield",
+        "value": "noSuccess"
       }
     ]
   },

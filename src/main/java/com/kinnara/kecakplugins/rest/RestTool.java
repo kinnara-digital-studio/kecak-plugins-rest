@@ -186,36 +186,6 @@ public class RestTool extends DefaultApplicationPlugin implements RestMixin, Unc
 	}
 
 	/**
-	 *
-	 * @param variable : variable name to search
-	 * @param element : element to search for variable
-	 * @return
-	 */
-	private JsonElement getJsonResultVariable(String variable, JsonElement element) {
-		if(element.isJsonObject())
-			return getJsonResultVariableFromObject(variable, element.getAsJsonObject());
-		else if(element.isJsonArray())
-			return getJsonResultVariableFromArray(variable, element.getAsJsonArray());
-		else if(element.isJsonPrimitive())
-			return element;
-		return null;
-	}
-
-	private JsonElement getJsonResultVariableFromObject(String variable, JsonObject object) {
-		return object.get(variable);
-	}
-
-	private JsonElement getJsonResultVariableFromArray(String variable, JsonArray array) {
-		for(JsonElement item : array) {
-			JsonElement result = getJsonResultVariable(variable, item);
-			if(result != null) {
-				return result;
-			}
-		}
-		return null;
-	}
-
-	/**
 	 * Get property "parameters"
 	 *
 	 * @param properties

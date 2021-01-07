@@ -15,15 +15,14 @@ import org.joget.apps.datalist.model.DataList;
 import org.joget.apps.datalist.model.DataListCollection;
 import org.joget.apps.form.model.Form;
 import org.joget.apps.form.model.FormData;
-import org.joget.apps.form.model.FormRow;
 import org.joget.apps.form.model.FormRowSet;
 import org.joget.commons.util.LogUtil;
-import org.joget.commons.util.SetupManager;
 import org.joget.plugin.base.DefaultApplicationPlugin;
+import org.joget.plugin.base.PluginManager;
 import org.joget.workflow.model.WorkflowAssignment;
+import org.joget.workflow.model.service.WorkflowManager;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.List;
@@ -53,6 +52,8 @@ public class DataListRestTool extends DefaultApplicationPlugin implements RestMi
 
     @Override
     public Object execute(Map properties) {
+        PluginManager pluginManager = (PluginManager) properties.get("pluginManager");
+        WorkflowManager workflowManager = (WorkflowManager) pluginManager.getBean("workflowManager");
         WorkflowAssignment workflowAssignment = (WorkflowAssignment) properties.get("workflowAssignment");
 
         try {
@@ -66,96 +67,152 @@ public class DataListRestTool extends DefaultApplicationPlugin implements RestMi
             final String url = getPropertyUrl(workflowAssignment);
             final HttpClient client = getHttpClient(isIgnoreCertificateError());
 
-            rows.stream()
-                    .peek(m -> LogUtil.info(getClassName(), "rows id ["+m.get("id")+"] export_id ["+m.get("export_id")+"]"))
+            long processingRows = rows.size();
+            if(isDebug()) {
+                LogUtil.info(getClassName(), "Processing [" + processingRows + "] rows");
+            }
+
+            long processedRows = rows.stream()
                     .map(m -> formatRow(dataList, m))
-                    .forEach(m -> {
-                        try {
-                            String primaryKeyField = dataList.getBinder().getPrimaryKeyColumnName();
-                            String primaryKeyValue = m.getOrDefault(primaryKeyField, "").toString();
+                    .map(throwableFunction(m -> {
+                        String primaryKeyField = dataList.getBinder().getPrimaryKeyColumnName();
+                        String primaryKeyValue = m.getOrDefault(primaryKeyField, "");
 
-                            LogUtil.info(getClassName(), "Executing rest API for primary key [" + primaryKeyValue + "]");
+                        LogUtil.info(getClassName(), "Executing rest API for primary key [" + primaryKeyValue + "]");
 
-                            final HttpEntity httpEntity = getRequestEntity(workflowAssignment, m);
-                            final HttpUriRequest request = getHttpRequest(workflowAssignment, url, getPropertyMethod(), getPropertyHeaders(workflowAssignment), httpEntity, m);
-                            final HttpResponse response = client.execute(request);
+                        final HttpEntity httpEntity = getRequestEntity(workflowAssignment, m);
+                        final HttpUriRequest request = getHttpRequest(workflowAssignment, url, getPropertyMethod(), getPropertyHeaders(workflowAssignment), httpEntity, m);
+                        final HttpResponse response = client.execute(request);
 
-                            HttpEntity entity = response.getEntity();
-                            if (entity == null) {
-                                throw new RestClientException("Empty response");
+                        HttpEntity entity = response.getEntity();
+                        if (entity == null) {
+                            throw new RestClientException("Empty response");
+                        }
+
+                        final int statusCode = getResponseStatus(response);
+                        if (getStatusGroupCode(statusCode) != 200) {
+                            throw new RestClientException("Response code [" + statusCode + "] is not 200 (Success)");
+                        } else if(statusCode != 200) {
+                            LogUtil.warn(getClassName(), "Response code [" + statusCode + "] is considered as success");
+                        }
+
+                        final String responseContentType = getResponseContentType(response);
+
+                        try (BufferedReader br = new BufferedReader(new InputStreamReader(response.getEntity().getContent()))) {
+                            String responseBody = br.lines().collect(Collectors.joining());
+
+                            if (isDebug()) {
+                                LogUtil.info(getClassName(), "Response Content-Type [" + responseContentType + "] body [" + responseBody + "]");
                             }
 
-                            final int statusCode = getResponseStatus(response);
-                            if (getStatusGroupCode(statusCode) != 200) {
-                                throw new RestClientException("Response code [" + statusCode + "] is not 200 (Success)");
+                            if (!isJsonResponse(response)) {
+                                throw new RestClientException("Content-Type : [" + responseContentType + "] not supported");
                             }
 
-                            final String responseContentType = getResponseContentType(response);
+                            final JsonElement completeElement;
+                            try {
+                                JsonParser parser = new JsonParser();
+                                completeElement = parser.parse(responseBody);
+                            } catch (JsonSyntaxException ex) {
+                                throw new RestClientException(ex);
+                            }
 
-                            try (BufferedReader br = new BufferedReader(new InputStreamReader(response.getEntity().getContent()))) {
-                                String responseBody = br.lines().collect(Collectors.joining());
+
+                            // Handle success status
+                            String successStatusPath = getSuccessStatusPath();
+                            if(!successStatusPath.isEmpty()) {
+                                String successStatusValue = getSuccessStatusValue(workflowAssignment);
+                                String responseSuccessStatusValue = getJsonResultVariableValue(successStatusPath, completeElement).orElse("");
+                                if(!responseSuccessStatusValue.equals(successStatusValue)) {
+                                    throw new RestClientException("Response path [" + successStatusPath + "] with value [" + responseSuccessStatusValue + "] is not indicated as success ["+successStatusValue+"]");
+                                }
+                            }
+
+                            // Handle failed status
+                            String failedStatusPath = getFailedStatusPath();
+                            if(!failedStatusPath.isEmpty()) {
+                                String failedStatusValue = getFailedStatusValue(workflowAssignment);
+                                String responseFailedStatusValue = getJsonResultVariableValue(failedStatusPath, completeElement).orElse("");
+                                if(responseFailedStatusValue.equals(failedStatusValue)) {
+                                    throw new RestClientException("Response path [" + successStatusPath + "] with value [" + responseFailedStatusValue + "] is indicated as failed [" + failedStatusValue + "]");
+                                }
+                            }
+
+
+                            // Form Binding
+                            String formDefId = getPropertyString("formDefId");
+                            if (!formDefId.isEmpty()) {
+                                Form form = generateForm(formDefId);
+
+                                String recordPath = getPropertyString("jsonRecordPath");
+                                Object[] fieldMapping = (Object[]) getProperty("fieldMapping");
+
+                                Pattern recordPattern = Pattern.compile(recordPath.replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
+                                Map<String, Pattern> fieldPattern = new HashMap<>();
+                                for (Object o : fieldMapping) {
+                                    Map<String, String> mapping = (Map<String, String>) o;
+                                    Pattern pattern = Pattern.compile(mapping.get("jsonPath").replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
+                                    fieldPattern.put(mapping.get("formField"), pattern);
+                                }
+
+                                FormRowSet result = new FormRowSet();
+                                parseJson("", completeElement, recordPattern, fieldPattern, true, result, null, primaryKeyField, primaryKeyValue);
 
                                 if (isDebug()) {
-                                    LogUtil.info(getClassName(), "Response Content-Type [" + responseContentType + "] body [" + responseBody + "]");
-                                }
-
-                                if (!isJsonResponse(response)) {
-                                    throw new RestClientException("Content-Type : [" + responseContentType + "] not supported");
-                                }
-
-                                final JsonElement completeElement;
-                                try {
-                                    JsonParser parser = new JsonParser();
-                                    completeElement = parser.parse(responseBody);
-                                } catch (JsonSyntaxException ex) {
-                                    throw new RestClientException(ex);
-                                }
-
-                                // Form Binding
-                                String formDefId = getPropertyString("formDefId");
-                                if(!formDefId.isEmpty()) {
-                                    Form form = generateForm(formDefId);
-
-                                    String recordPath = getPropertyString("jsonRecordPath");
-                                    Object[] fieldMapping = (Object[]) getProperty("fieldMapping");
-
-                                    Pattern recordPattern = Pattern.compile(recordPath.replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
-                                    Map<String, Pattern> fieldPattern = new HashMap<>();
-                                    for (Object o : fieldMapping) {
-                                        Map<String, String> mapping = (Map<String, String>) o;
-                                        Pattern pattern = Pattern.compile(mapping.get("jsonPath").replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
-                                        fieldPattern.put(mapping.get("formField"), pattern);
-                                    }
-
-                                    FormRowSet result = new FormRowSet();
-                                    parseJson("", completeElement, recordPattern, fieldPattern, true, result, null, primaryKeyField, primaryKeyValue);
-
-                                    if (isDebug()) {
-                                        result.stream()
-                                                .peek(r -> LogUtil.info(getClassName(), "-------Row Set-------"))
-                                                .flatMap(r -> r.entrySet().stream())
-                                                .forEach(e -> LogUtil.info(getClassName(), "key [" + e.getKey() + "] value [" + e.getValue() + "]"));
-                                    }
-
-                                    // save data to form
                                     result.stream()
-                                            .findFirst()
-                                            .ifPresent(row -> {
-                                                FormData formData = new FormData();
-                                                formData.setPrimaryKeyValue(row.getId());
+                                            .peek(r -> LogUtil.info(getClassName(), "-------Row Set-------"))
+                                            .flatMap(r -> r.entrySet().stream())
+                                            .forEach(e -> LogUtil.info(getClassName(), "key [" + e.getKey() + "] value [" + e.getValue() + "]"));
+                                }
+
+                                // save data to form
+                                result.stream()
+                                        .findFirst()
+                                        .ifPresent(row -> {
+                                            FormData formData = new FormData();
+                                            formData.setPrimaryKeyValue(row.getId());
+
+                                            if(workflowAssignment != null) {
                                                 formData.setActivityId(workflowAssignment.getActivityId());
                                                 formData.setProcessId(workflowAssignment.getProcessId());
+                                            }
 
-                                                form.getStoreBinder().store(form, result, formData);
-                                            });
-                                }
-                            }
-                        } catch (JsonSyntaxException | RestClientException | IOException e) {
-                            if(isDebug()) {
-                                LogUtil.error(getClassName(), e, e.getMessage());
-                            }
-                        }
-                    });
+                                            form.getStoreBinder().store(form, result, formData);
+                                        });
+                            } // if
+                        } // try
+
+                        return true; // success
+
+                    }))
+                    .filter(success -> success != null && success) // handle only success
+                    .count();
+
+            if (processedRows == 0) {
+                LogUtil.warn(getClassName(), "From [" + processingRows + "] records, no data is successfully processed");
+            } else if (processingRows != processedRows) {
+                LogUtil.warn(getClassName(), "Processing [" + processingRows + "] records but only [" + processedRows + "] successfully processed");
+            }
+
+            String statusVariable = getStatusVariable();
+            if(!statusVariable.isEmpty() && workflowAssignment != null) {
+                String statusValue;
+                if(processingRows == 0) {
+                    statusValue = getValueNoData(workflowAssignment);
+                } else if(processedRows == 0) {
+                    statusValue = getValueNoneSuccess(workflowAssignment);
+                } else if(processingRows == processedRows) {
+                    statusValue = getValueFullSuccess(workflowAssignment);
+                } else {
+                    statusValue = getValuePartialSuccess(workflowAssignment);
+                }
+
+                if(isDebug()) {
+                    LogUtil.info(getClassName(), "Setting status variable ["+statusVariable+"] with value ["+statusValue+"]");
+                }
+
+                workflowManager.processVariable(workflowAssignment.getProcessId(), statusVariable, statusValue);
+            }
 
         } catch (RestClientException e) {
             LogUtil.error(getClassName(), e, e.getMessage());
@@ -176,5 +233,41 @@ public class DataListRestTool extends DefaultApplicationPlugin implements RestMi
     @Override
     public String getPropertyOptions() {
         return AppUtil.readPluginResource(getClassName(), "/properties/DataListRestTool.json", null, true, "/message/Rest");
+    }
+
+    protected String getStatusVariable() {
+        return getPropertyString("statusVariable");
+    }
+
+    protected String getValueNoData(WorkflowAssignment assignment) {
+        return getPropertyString("valueNoData");
+    }
+
+    protected String getValueFullSuccess(WorkflowAssignment assignment) {
+        return getPropertyString("valueFullSuccess");
+    }
+
+    protected String getValuePartialSuccess(WorkflowAssignment assignment) {
+        return getPropertyString("valuePartialSuccess");
+    }
+
+    protected String getValueNoneSuccess(WorkflowAssignment assignment) {
+        return getPropertyString("valueNoneSuccess");
+    }
+
+    protected String getSuccessStatusPath() {
+        return getPropertyString("successStatusPath");
+    }
+
+    protected String getSuccessStatusValue(WorkflowAssignment assignment) {
+        return AppUtil.processHashVariable(getPropertyString("successStatusValue"), assignment, null, null);
+    }
+
+    protected String getFailedStatusPath() {
+        return getPropertyString("failedStatusPath");
+    }
+
+    protected String getFailedStatusValue(WorkflowAssignment assignment) {
+        return AppUtil.processHashVariable(getPropertyString("successStatusValue"), assignment, null, null);
     }
 }

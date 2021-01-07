@@ -40,6 +40,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.springframework.context.ApplicationContext;
+import org.springframework.security.access.method.P;
 import org.xml.sax.SAXException;
 
 import javax.annotation.Nonnull;
@@ -235,13 +236,20 @@ public interface RestMixin extends PropertyEditable, Unclutter {
      * @throws RestClientException
      */
     default HttpEntity getJsonRequestEntity(String entity, WorkflowAssignment assignment, Map<String, String> variables) throws RestClientException {
-        String jsonString = verifyJsonString(entity);
-        String body = AppUtil.processHashVariable(variableInterpolation(jsonString, variables), assignment, null, null);
+//        String jsonString = verifyJsonString(entity);
+//        String body = AppUtil.processHashVariable(variableInterpolation(jsonString, variables), assignment, null, null);
+//
+//        if(isNotEmpty(body)) {
+//            return new StringEntity(body.toString(), ContentType.APPLICATION_JSON);
+//        } else {
+//            return null;
+//        }
 
-        if(isNotEmpty(body)) {
+        String body = AppUtil.processHashVariable(variableInterpolation(entity, variables), assignment, null, null);
+        if(isJsonObject(body) || isJsonArray(body)) {
             return new StringEntity(body, ContentType.APPLICATION_JSON);
         } else {
-            return null;
+            throw new RestClientException("Invalid json : " + entity);
         }
     }
 
@@ -265,6 +273,24 @@ public interface RestMixin extends PropertyEditable, Unclutter {
                     throw new RestClientException("Invalid json");
                 }
             }
+        }
+    }
+
+    default boolean isJsonObject(String inputString) {
+        try {
+            new JSONObject(inputString);
+            return true;
+        } catch (JSONException e) {
+            return false;
+        }
+    }
+
+    default boolean isJsonArray(String inputString) {
+        try {
+            new JSONArray(inputString);
+            return true;
+        } catch (JSONException e) {
+            return false;
         }
     }
 
@@ -650,6 +676,10 @@ public interface RestMixin extends PropertyEditable, Unclutter {
 
         for (Map.Entry<String, String> e : variables.entrySet()) {
             content = content.replaceAll("\\$\\{" + e.getKey() + "}", String.valueOf(e.getValue()));
+
+            if(isDebug()) {
+                LogUtil.info(getClassName(), "variableInterpolation : interpolating variable key [" + e.getKey() + "] with value [" + e.getValue() + "] result content [" + content + "]");
+            }
         }
 
         return content;
@@ -1022,5 +1052,43 @@ public interface RestMixin extends PropertyEditable, Unclutter {
         for(int i = 0, size = json.size(); i < size; i++) {
             parseJson(path, json.get(i), recordPattern, fieldPattern, isLookingForRecordPattern, rowSet, row, foreignKeyField, primaryKey);
         }
+    }
+
+    /**
+     *
+     * @param variable : variable name to search
+     * @param element : element to search for variable
+     * @return
+     */
+    default JsonElement getJsonResultVariable(@Nonnull String variable, @Nonnull JsonElement element) {
+        if(element.isJsonObject())
+            return getJsonResultVariableFromObject(variable, element.getAsJsonObject());
+        else if(element.isJsonArray())
+            return getJsonResultVariableFromArray(variable, element.getAsJsonArray());
+        else if(element.isJsonPrimitive())
+            return element;
+        return null;
+    }
+
+    default Optional<String> getJsonResultVariableValue(String variable, JsonElement element) {
+        JsonElement currentElement = getJsonResultVariable(variable, element);
+
+        return Optional.ofNullable(currentElement)
+                .filter(JsonElement::isJsonPrimitive)
+                .map(JsonElement::getAsString);
+    }
+
+    default JsonElement getJsonResultVariableFromObject(String variable, JsonObject object) {
+        return object.get(variable);
+    }
+
+    default JsonElement getJsonResultVariableFromArray(String variable, JsonArray array) {
+        for(JsonElement item : array) {
+            JsonElement result = getJsonResultVariable(variable, item);
+            if(result != null) {
+                return result;
+            }
+        }
+        return null;
     }
 }
