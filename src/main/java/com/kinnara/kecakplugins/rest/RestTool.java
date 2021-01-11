@@ -124,19 +124,28 @@ public class RestTool extends DefaultApplicationPlugin implements RestMixin, Unc
 							.forEach(row -> {
 								String[] responseVariables = row.get("responseValue").split("\\.");
 
-								JsonElement currentElement = completeElement;
-								for (String responseVariable : responseVariables) {
-									if (currentElement == null)
-										break;
+//								JsonElement currentElement = completeElement;
+//								for (String responseVariable : responseVariables) {
+//									if (currentElement == null)
+//										break;
+//
+//									currentElement = getJsonResultVariable(responseVariable, currentElement);
+//								}
+//
+//								if (currentElement != null && currentElement.isJsonPrimitive()) {
+//									if (isDebug())
+//										LogUtil.info(getClassName(), "Setting workflow variable [" + row.get("workflowVariable") + "] with [" + currentElement.getAsString() + "]");
+//									workflowManager.processVariable(workflowAssignment.getProcessId(), row.get("workflowVariable"), currentElement.getAsString());
+//								}
 
-									currentElement = getJsonResultVariable(responseVariable, currentElement);
-								}
+								getJsonResultVariableValue(row.get("responseValue"), completeElement)
+										.ifPresent(s -> {
+											if (isDebug()) {
+												LogUtil.info(getClassName(), "Setting workflow variable [" + row.get("workflowVariable") + "] with [" + s + "]");
+											}
 
-								if (currentElement != null && currentElement.isJsonPrimitive()) {
-									if (isDebug())
-										LogUtil.info(getClassName(), "Setting workflow variable [" + row.get("workflowVariable") + "] with [" + currentElement.getAsString() + "]");
-									workflowManager.processVariable(workflowAssignment.getProcessId(), row.get("workflowVariable"), currentElement.getAsString());
-								}
+											workflowManager.processVariable(workflowAssignment.getProcessId(), row.get("workflowVariable"), s);
+										});
 							});
 
 					// Form Binding

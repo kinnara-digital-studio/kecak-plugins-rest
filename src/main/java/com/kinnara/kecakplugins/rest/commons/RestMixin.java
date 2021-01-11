@@ -1054,6 +1054,22 @@ public interface RestMixin extends PropertyEditable, Unclutter {
         }
     }
 
+    default Optional<String> getJsonResultVariableValue(String variablePath, JsonElement element) {
+        if(variablePath == null || element == null) {
+            return Optional.empty();
+        }
+
+        JsonElement currentElement = element;
+        for(String variable : variablePath.split("\\.")) {
+            if(currentElement == null) {
+                break;
+            }
+            currentElement = getJsonResultVariable(variable, currentElement);
+        }
+
+        return Optional.ofNullable(currentElement).map(JsonElement::getAsString);
+    }
+
     /**
      *
      * @param variable : variable name to search
@@ -1068,14 +1084,6 @@ public interface RestMixin extends PropertyEditable, Unclutter {
         else if(element.isJsonPrimitive())
             return element;
         return null;
-    }
-
-    default Optional<String> getJsonResultVariableValue(String variable, JsonElement element) {
-        JsonElement currentElement = getJsonResultVariable(variable, element);
-
-        return Optional.ofNullable(currentElement)
-                .filter(JsonElement::isJsonPrimitive)
-                .map(JsonElement::getAsString);
     }
 
     default JsonElement getJsonResultVariableFromObject(String variable, JsonObject object) {
