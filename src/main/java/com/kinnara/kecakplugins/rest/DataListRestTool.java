@@ -268,6 +268,6 @@ public class DataListRestTool extends DefaultApplicationPlugin implements RestMi
     }
 
     protected String getFailedStatusValue(WorkflowAssignment assignment) {
-        return AppUtil.processHashVariable(getPropertyString("successStatusValue"), assignment, null, null);
+        return AppUtil.processHashVariable(getPropertyString("failedStatusValue"), assignment, null, null);
     }
 }
