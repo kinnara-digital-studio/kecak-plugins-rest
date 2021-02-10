@@ -75,6 +75,8 @@ public class DataListRestTool extends DefaultApplicationPlugin implements RestMi
             long processedRows = rows.stream()
                     .map(m -> formatRow(dataList, m))
                     .map(throwableFunction(m -> {
+                        boolean fails = false;
+
                         String primaryKeyField = dataList.getBinder().getPrimaryKeyColumnName();
                         String primaryKeyValue = m.getOrDefault(primaryKeyField, "");
 
@@ -117,14 +119,14 @@ public class DataListRestTool extends DefaultApplicationPlugin implements RestMi
                                 throw new RestClientException(ex);
                             }
 
-
                             // Handle success status
                             String successStatusPath = getSuccessStatusPath();
                             if(!successStatusPath.isEmpty()) {
                                 String successStatusValue = getSuccessStatusValue(workflowAssignment);
                                 String responseSuccessStatusValue = getJsonResultVariableValue(successStatusPath, completeElement).orElse("");
                                 if(!responseSuccessStatusValue.equals(successStatusValue)) {
-                                    throw new RestClientException("Response path [" + successStatusPath + "] with value [" + responseSuccessStatusValue + "] is not indicated as success ["+successStatusValue+"]");
+                                    fails = true;
+                                    LogUtil.warn(getClassName(), "Response path [" + successStatusPath + "] with value [" + responseSuccessStatusValue + "] is not indicated as success ["+successStatusValue+"]");
                                 }
                             }
 
@@ -134,10 +136,10 @@ public class DataListRestTool extends DefaultApplicationPlugin implements RestMi
                                 String failedStatusValue = getFailedStatusValue(workflowAssignment);
                                 String responseFailedStatusValue = getJsonResultVariableValue(failedStatusPath, completeElement).orElse("");
                                 if(responseFailedStatusValue.equals(failedStatusValue)) {
-                                    throw new RestClientException("Response path [" + successStatusPath + "] with value [" + responseFailedStatusValue + "] is indicated as failed [" + failedStatusValue + "]");
+                                    fails = true;
+                                    LogUtil.warn(getClassName(), "Response path [" + successStatusPath + "] with value [" + responseFailedStatusValue + "] is indicated as failed [" + failedStatusValue + "]");
                                 }
                             }
-
 
                             // Form Binding
                             String formDefId = getPropertyString("formDefId");
@@ -148,22 +150,16 @@ public class DataListRestTool extends DefaultApplicationPlugin implements RestMi
                                 Object[] fieldMapping = (Object[]) getProperty("fieldMapping");
 
                                 Pattern recordPattern = Pattern.compile(recordPath.replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
-                                Map<String, Pattern> fieldPattern = new HashMap<>();
+                                final Map<String, Pattern> fieldPattern = new HashMap<>();
                                 for (Object o : fieldMapping) {
                                     Map<String, String> mapping = (Map<String, String>) o;
-                                    Pattern pattern = Pattern.compile(mapping.get("jsonPath").replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
+                                    String regexPattern = mapping.get("jsonPath").replaceAll("\\.", "\\.") + "$";
+                                    Pattern pattern = Pattern.compile(regexPattern, Pattern.CASE_INSENSITIVE);
                                     fieldPattern.put(mapping.get("formField"), pattern);
                                 }
 
                                 FormRowSet result = new FormRowSet();
                                 parseJson("", completeElement, recordPattern, fieldPattern, true, result, null, primaryKeyField, primaryKeyValue);
-
-                                if (isDebug()) {
-                                    result.stream()
-                                            .peek(r -> LogUtil.info(getClassName(), "-------Row Set-------"))
-                                            .flatMap(r -> r.entrySet().stream())
-                                            .forEach(e -> LogUtil.info(getClassName(), "key [" + e.getKey() + "] value [" + e.getValue() + "]"));
-                                }
 
                                 // save data to form
                                 result.stream()
@@ -182,7 +178,7 @@ public class DataListRestTool extends DefaultApplicationPlugin implements RestMi
                             } // if
                         } // try
 
-                        return true; // success
+                        return !fails; // success
 
                     }))
                     .filter(success -> success != null && success) // handle only success
