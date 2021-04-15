@@ -10,35 +10,33 @@ import com.kinnara.kecakplugins.rest.commons.RestMixin;
 import com.kinnara.kecakplugins.rest.exceptions.RestClientException;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpRequestBase;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.form.model.FormRowSet;
 import org.joget.commons.util.LogUtil;
-import org.joget.directory.model.service.DirectoryManager;
 import org.joget.workflow.model.DefaultParticipantPlugin;
-import org.joget.workflow.model.WorkflowAssignment;
+import org.joget.workflow.model.WorkflowActivity;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class RestParticipantMapper extends DefaultParticipantPlugin implements RestMixin {
 	private final static String LABEL = "REST Participant Mapping";
 
 	@Override
 	public Collection<String> getActivityAssignments(Map props) {
-		WorkflowAssignment workflowAssignment = (WorkflowAssignment) props.get("workflowAssignment");
+		WorkflowActivity workflowActivity = (WorkflowActivity) props.get("workflowActivity");
 		Collection<String> approver = new ArrayList<>();
 		try {
-			final String url = getPropertyUrl(workflowAssignment);
+			final String url = getPropertyUrl(null);
 			final HttpClient client = getHttpClient(isIgnoreCertificateError());
-			final HttpUriRequest request = getHttpRequest(workflowAssignment, url, getPropertyMethod(), getPropertyHeaders(workflowAssignment), null);
+			final HttpUriRequest request = getHttpRequest(null, url, getPropertyMethod(), getPropertyHeaders(null), null);
 			HttpResponse response = client.execute(request);
 
 			String responseContentType = getResponseContentType(response);

@@ -105,7 +105,7 @@ public interface RestMixin extends PropertyEditable, Unclutter {
      * @return
      */
     @Nonnull
-    default String getParameterString(WorkflowAssignment assignment) {
+    default String getParameterString(@Nullable WorkflowAssignment assignment) {
         return getParameters()
                 .stream()
                 .map(throwableFunction(m -> String.format("%s=%s", m.get("key"), URLEncoder.encode(AppUtil.processHashVariable(m.get("value"), assignment, null, null), "UTF-8"))))
@@ -144,7 +144,7 @@ public interface RestMixin extends PropertyEditable, Unclutter {
      * @param assignment WorkflowAssignment
      * @return
      */
-    default String getPropertyUrl(WorkflowAssignment assignment) {
+    default String getPropertyUrl(@Nullable WorkflowAssignment assignment) {
         String url = AppUtil.processHashVariable(getPropertyString("url"), assignment, null, null);
         String parameter = getParameterString(assignment).trim();
 
@@ -235,7 +235,7 @@ public interface RestMixin extends PropertyEditable, Unclutter {
      * @return
      * @throws RestClientException
      */
-    default HttpEntity getJsonRequestEntity(String entity, WorkflowAssignment assignment, Map<String, String> variables) throws RestClientException {
+    default HttpEntity getJsonRequestEntity(String entity, @Nullable WorkflowAssignment assignment, Map<String, String> variables) throws RestClientException {
 //        String jsonString = verifyJsonString(entity);
 //        String body = AppUtil.processHashVariable(variableInterpolation(jsonString, variables), assignment, null, null);
 //
@@ -388,7 +388,7 @@ public interface RestMixin extends PropertyEditable, Unclutter {
      * @return
      * @throws RestClientException
      */
-    default HttpUriRequest getHttpRequest(WorkflowAssignment assignment, String url, String method, Map<String, String> headers, Map<String, String> variables) throws RestClientException {
+    default HttpUriRequest getHttpRequest(@Nullable WorkflowAssignment assignment, String url, String method, Map<String, String> headers, Map<String, String> variables) throws RestClientException {
         @Nullable HttpEntity httpEntity;
         if(isJsonRequest()) {
             httpEntity = getJsonRequestEntity(getPropertyBody(), assignment, variables);
