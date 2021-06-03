@@ -119,7 +119,7 @@ public class RestTool extends DefaultApplicationPlugin implements RestMixin, Unc
 					Optional.ofNullable(properties.get("mapresponsetovariable"))
 							.map(o -> (Object[]) o)
 							.map(Arrays::stream)
-							.orElse(Stream.empty())
+							.orElseGet(Stream::empty)
 							.map(o -> (Map<String, String>) o)
 							.forEach(row -> {
 								String[] responseVariables = row.get("responseValue").split("\\.");
