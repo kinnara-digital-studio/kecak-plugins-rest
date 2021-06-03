@@ -51,6 +51,10 @@
 					{
 						"value" : "application/json",
 						"label" : "application/json"
+					},
+					{
+						"value" : "multipart/form-data",
+						"label" : "multipart/form-data"
 					}
 				]
 			}, {
@@ -58,9 +62,27 @@
 				"label" : "@@resttool.body@@",
 				"type" : "CodeEditor",
 				"mode" : "json",
-				"control_field" : "method",
-				"control_value" : "POST|PUT",
-				"control_use_regex" : "true"
+				"control_field" : "contentType",
+				"control_value" : "application/json"
+			},
+			{
+				"name": "formData",
+				"label" : "@@rest.body@@",
+				"description" : "@@rest.body.description@@",
+				"type" : "grid",
+				"columns": [
+					{
+						"key": "key",
+						"label": "@@rest.key@@",
+						"required": "true"
+					},
+					{
+						"key": "value",
+						"label": "@@rest.value@@"
+					}
+				],
+				"control_field" : "contentType",
+				"control_value" : "multipart/form-data"
 			}
 		]
 	}, {

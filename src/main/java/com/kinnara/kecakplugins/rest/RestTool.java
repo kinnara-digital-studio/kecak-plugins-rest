@@ -144,7 +144,7 @@ public class RestTool extends DefaultApplicationPlugin implements RestMixin, Unc
 												LogUtil.info(getClassName(), "Setting workflow variable [" + row.get("workflowVariable") + "] with [" + s + "]");
 											}
 
-											workflowManager.processVariable(workflowAssignment.getProcessId(), row.get("workflowVariable"), s);
+											workflowManager.activityVariable(workflowAssignment.getActivityId(), row.get("workflowVariable"), s);
 										});
 							});
 
