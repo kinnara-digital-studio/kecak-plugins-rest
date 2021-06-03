@@ -107,6 +107,17 @@
 				"name" : "statusCodeworkflowVariable",
 				"label" : "@@resttool.statusCodeworkflowVariable@@",
 				"type" : "textfield"
+			}, {
+				"name": "doNotOverwriteIfValueEmpty",
+				"label": "@@resttool.doNotOverwriteIfValueEmpty@@",
+				"type": "checkbox",
+				"value": "false",
+				"options": [
+					{
+						"value": "true",
+						"label": ""
+					}
+				]
 			}
 		]
 	}, {

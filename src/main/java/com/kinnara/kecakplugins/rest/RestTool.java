@@ -49,7 +49,7 @@ public class RestTool extends DefaultApplicationPlugin implements RestMixin, Unc
 		String appId = appDef.getId();
 		String appVersion = appDef.getVersion().toString();
 		Object[] arguments = new Object[]{appId, appVersion, appId, appVersion, appId, appVersion};
-		String json = AppUtil.readPluginResource((String)this.getClass().getName(), (String)"/properties/restTool.json", (Object[])arguments, (boolean)true, (String)"message/restTool");
+		String json = AppUtil.readPluginResource(this.getClass().getName(), "/properties/restTool.json", arguments, true, "message/restTool");
 		return json;
 	}
 
@@ -138,7 +138,9 @@ public class RestTool extends DefaultApplicationPlugin implements RestMixin, Unc
 //									workflowManager.processVariable(workflowAssignment.getProcessId(), row.get("workflowVariable"), currentElement.getAsString());
 //								}
 
+								boolean doNotOverwriteIfValueEmpty = "true".equalsIgnoreCase(getPropertyString("doNotOverwriteIfValueEmpty"));
 								getJsonResultVariableValue(row.get("responseValue"), completeElement)
+										.filter(s -> !(s.isEmpty() && doNotOverwriteIfValueEmpty)) // do not write empty value
 										.ifPresent(s -> {
 											if (isDebug()) {
 												LogUtil.info(getClassName(), "Setting workflow variable [" + row.get("workflowVariable") + "] with [" + s + "]");
