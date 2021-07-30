@@ -666,7 +666,11 @@ public interface RestMixin extends PropertyEditable, Unclutter {
      * @return
      */
     default String variableInterpolation(String content, @Nullable Map<String, String> variables) {
-        if(variables == null) {
+        if(variables == null || variables.isEmpty()) {
+            if(isDebug()) {
+                LogUtil.info(getClassName(), "variableInterpolation : Empty variables");
+            }
+
             return content;
         }
 
