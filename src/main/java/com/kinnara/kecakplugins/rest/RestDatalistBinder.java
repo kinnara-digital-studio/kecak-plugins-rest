@@ -151,23 +151,32 @@ public class RestDatalistBinder extends DataListBinderDefault implements RestMix
 
     @Nonnull
     private FormRowSet executeRequest(int limit, Object[] headersProperty) {
-        try {            
+        try {
             final String url = getPropertyUrl();
 			final HttpClient client = getHttpClient(isIgnoreCertificateError());
-            final HttpUriRequest request = getHttpRequest(url, getPropertyMethod(), getPropertyHeaders(), null);
+//            final HttpUriRequest request = getHttpRequest(url, getPropertyMethod(), getPropertyHeaders(), null);
+
+			final Map<String, String> headers = Arrays.stream(headersProperty)
+					.map(o -> (Map<String, Object>)o)
+					.collect(Collectors.toMap(m -> String.valueOf(m.getOrDefault("key", "")), m -> String.valueOf(m.getOrDefault("value", ""))));
+            final HttpUriRequest request = getHttpRequest(url, getPropertyMethod(), headers, null);
 
             // kirim request ke server
             HttpResponse response = client.execute(request);
-            String responseContentType = getResponseContentType(response);
 
-            LogUtil.info(getClassName(), "Response status code ["+ getResponseStatus(response) + "]");
-            
+			final int statusCode = getResponseStatus(response);
+			if (getStatusGroupCode(statusCode) != 200) {
+				throw new RestClientException("Response code [" + statusCode + "] is not 200 (Success)");
+			} else if(statusCode != 200) {
+				LogUtil.warn(getClassName(), "Response code [" + statusCode + "] is considered as success");
+			}
+
             // get properties
 			String recordPath = getPropertyRecordPath();
 			
 			Pattern recordPattern = Pattern.compile(recordPath.replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
 			
-            if(responseContentType.contains("json")) {
+            if(isJsonResponse(response)) {
 				JsonParser parser = new JsonParser();
 				try(JsonReader reader = new JsonReader(new InputStreamReader(response.getEntity().getContent()))) {
 					JsonElement element = parser.parse(reader);
@@ -177,10 +186,10 @@ public class RestDatalistBinder extends DataListBinderDefault implements RestMix
 				} catch (JsonSyntaxException ex) {
 					LogUtil.error(getClassName(), ex, ex.getMessage());
 				}
-            } else if(responseContentType.contains("xml")) {
-				LogUtil.warn(getClassName(), "Content Type [" + responseContentType + "] is not supported");
+            } else if(isXmlResponse(response)) {
+				LogUtil.warn(getClassName(), "Content Type [" + getResponseContentType(response) + "] is not supported");
             } else {
-				LogUtil.warn(getClassName(), "Unsupported content type [" + responseContentType + "]");
+				LogUtil.warn(getClassName(), "Unsupported content type [" + getResponseContentType(response) + "]");
 				try(BufferedReader br = new BufferedReader(new InputStreamReader(response.getEntity().getContent()))) {
 					String lines = br.lines().collect(Collectors.joining());
 					LogUtil.info(getClassName(), "Response ["+lines+"]");
