@@ -84,7 +84,7 @@ public class RestLoadBinder extends FormBinder implements FormLoadElementBinder,
 			final HttpEntity httpEntity = getRequestEntity(workflowAssignment, variables);
 			final HttpUriRequest request = getHttpRequest(workflowAssignment, url, getPropertyMethod(), getPropertyHeaders(workflowAssignment), httpEntity, variables);
 			final HttpResponse response = client.execute(request);
-			return handleResponse(response);
+			return handleResponse(response, null);
 		} catch (IOException | RestClientException e) {
 			LogUtil.error(getClassName(), e, e.getMessage());
 		}
