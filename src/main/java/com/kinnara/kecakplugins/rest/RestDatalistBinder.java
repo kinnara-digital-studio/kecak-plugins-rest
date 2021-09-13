@@ -150,18 +150,16 @@ public class RestDatalistBinder extends DataListBinderDefault implements RestMix
     } 
 
     @Nonnull
-    private FormRowSet executeRequest(int limit, Object[] headersProperty) {
+    protected FormRowSet executeRequest(int limit, Object[] headersProperty) {
         try {
             final String url = getPropertyUrl();
-			final HttpClient client = getHttpClient(isIgnoreCertificateError());
-//            final HttpUriRequest request = getHttpRequest(url, getPropertyMethod(), getPropertyHeaders(), null);
-
 			final Map<String, String> headers = Arrays.stream(headersProperty)
 					.map(o -> (Map<String, Object>)o)
 					.collect(Collectors.toMap(m -> String.valueOf(m.getOrDefault("key", "")), m -> String.valueOf(m.getOrDefault("value", ""))));
             final HttpUriRequest request = getHttpRequest(url, getPropertyMethod(), headers, null);
 
             // kirim request ke server
+			final HttpClient client = getHttpClient(isIgnoreCertificateError());
             HttpResponse response = client.execute(request);
 
 			final int statusCode = getResponseStatus(response);

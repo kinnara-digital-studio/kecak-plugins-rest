@@ -245,7 +245,7 @@ public interface RestMixin extends PropertyEditable, Unclutter {
 //            return null;
 //        }
 
-        String body = AppUtil.processHashVariable(variableInterpolation(entity, variables), assignment, null, null);
+        final String body = AppUtil.processHashVariable(variableInterpolation(entity, variables), assignment, null, null);
         if(isJsonObject(body) || isJsonArray(body)) {
             return new StringEntity(body, ContentType.APPLICATION_JSON);
         } else {
@@ -390,7 +390,9 @@ public interface RestMixin extends PropertyEditable, Unclutter {
      */
     default HttpUriRequest getHttpRequest(@Nullable WorkflowAssignment assignment, String url, String method, Map<String, String> headers, Map<String, String> variables) throws RestClientException {
         @Nullable HttpEntity httpEntity;
-        if(isJsonRequest()) {
+        if("GET".equalsIgnoreCase(method) || "DELETE".equalsIgnoreCase(method)) {
+            httpEntity = null;
+        } else if(isJsonRequest()) {
             httpEntity = getJsonRequestEntity(getPropertyBody(), assignment, variables);
         } else if(isMultipartRequest()) {
             httpEntity = getMultipartRequestEntity(getPropertyFormData(assignment), assignment, variables);
@@ -518,7 +520,10 @@ public interface RestMixin extends PropertyEditable, Unclutter {
                 .map(HttpResponse::getEntity)
                 .map(HttpEntity::getContentType)
                 .map(Header::getValue)
-                .orElseThrow(() -> new RestClientException("Error getting  content type"));
+                .orElseGet(() -> {
+                    LogUtil.warn(getClassName(), "Empty header content-type");
+                    return "";
+                });
     }
 
     /**

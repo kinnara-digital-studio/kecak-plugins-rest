@@ -10,7 +10,8 @@
         "name" : "url",
         "label" : "@@rest.apiUrl@@",
         "type" : "textfield",
-        "required" : "True"
+        "required" : "True",
+        "description": "@@rest.apiUrl.desc@@"
       }, {
         "name" : "method",
         "label" : "@@rest.method@@",
