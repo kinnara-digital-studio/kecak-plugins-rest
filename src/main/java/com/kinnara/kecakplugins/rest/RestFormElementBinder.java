@@ -49,11 +49,7 @@ public class RestFormElementBinder extends FormBinder implements FormLoadElement
 
             LogUtil.info(getClassName(), "load : url ["+url+"]");
 
-            Map<String, String> variables = Collections.singletonMap("id", primaryKey);
-
             final HttpClient client = getHttpClient(isIgnoreCertificateError());
-//            final HttpEntity httpEntity = getRequestEntity(workflowAssignment, variables);
-//            final HttpUriRequest request = getHttpRequest(workflowAssignment, url, getPropertyMethod(), getPropertyHeaders(workflowAssignment), httpEntity, variables);
             final Map<String, String> headers = Arrays.stream((Object[]) getProperty("headers"))
                     .map(o -> (Map<String, Object>)o)
                     .peek(m -> LogUtil.info(getClassName(), "load : map [" + m.entrySet().stream().map(e -> e.getKey() +"->" + e.getValue()).collect(Collectors.joining(";")) + "]"))

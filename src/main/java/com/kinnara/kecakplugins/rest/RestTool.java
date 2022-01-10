@@ -1,6 +1,8 @@
 package com.kinnara.kecakplugins.rest;
 
-import com.google.gson.*;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
+import com.google.gson.JsonSyntaxException;
 import com.kinnara.kecakplugins.rest.commons.RestMixin;
 import com.kinnara.kecakplugins.rest.commons.Unclutter;
 import com.kinnara.kecakplugins.rest.exceptions.RestClientException;
@@ -68,128 +70,108 @@ public class RestTool extends DefaultApplicationPlugin implements RestMixin, Unc
 	@Override
 	public Object execute(Map properties) {
 		try {
-			ApplicationContext appContext = AppUtil.getApplicationContext();
-			WorkflowManager workflowManager = (WorkflowManager)appContext.getBean("workflowManager");
-			WorkflowAssignment workflowAssignment = (WorkflowAssignment) properties.get("workflowAssignment");
+			final ApplicationContext appContext = AppUtil.getApplicationContext();
+			final WorkflowManager workflowManager = (WorkflowManager)appContext.getBean("workflowManager");
+			final WorkflowAssignment workflowAssignment = (WorkflowAssignment) properties.get("workflowAssignment");
 
-			String statusCodeworkflowVariable = String.valueOf(properties.get("statusCodeworkflowVariable"));
+			final String statusCodeworkflowVariable = String.valueOf(properties.get("statusCodeworkflowVariable"));
 
-			try {
-				final String url = getPropertyUrl(workflowAssignment);
-				final HttpClient client = getHttpClient(isIgnoreCertificateError());
-				final HttpEntity httpEntity = getRequestEntity(workflowAssignment, null);
-				final HttpUriRequest request = getHttpRequest(workflowAssignment, url, getPropertyMethod(), getPropertyHeaders(workflowAssignment), httpEntity, null);
-				final HttpResponse response = client.execute(request);
+			final String url = getPropertyUrl(workflowAssignment);
+			final HttpClient client = getHttpClient(isIgnoreCertificateError());
+			final HttpEntity httpEntity = getRequestEntity(workflowAssignment, null);
+			final HttpUriRequest request = getHttpRequest(workflowAssignment, url, getPropertyMethod(), getPropertyHeaders(workflowAssignment), httpEntity, null);
+			final HttpResponse response = client.execute(request);
 
-				HttpEntity entity = response.getEntity();
-				if(entity == null) {
-					throw new RestClientException("Empty response");
-				}
-
-				final int statusCode = getResponseStatus(response);
-				if(getStatusGroupCode(statusCode) != 200) {
-					throw new RestClientException("Response code [" + statusCode + "] is not 200 (Success)");
-				}
-
-				final String responseContentType = getResponseContentType(response);
-
-				try(BufferedReader br = new BufferedReader(new InputStreamReader(response.getEntity().getContent()))) {
-					String responseBody = br.lines().collect(Collectors.joining());
-
-					if (isDebug()) {
-						LogUtil.info(getClassName(), "Response Content-Type [" + responseContentType + "] body [" + responseBody + "]");
-					}
-
-					if (!Optional.ofNullable(statusCodeworkflowVariable).orElse("").isEmpty()) {
-						workflowManager.processVariable(workflowAssignment.getProcessId(), statusCodeworkflowVariable, String.valueOf(statusCode));
-					}
-
-					if (!isJsonResponse(response)) {
-						throw new RestClientException("Content-Type : [" + responseContentType + "] not supported");
-					}
-
-					final JsonElement completeElement;
-					try {
-						JsonParser parser = new JsonParser();
-						completeElement = parser.parse(responseBody);
-					} catch (JsonSyntaxException ex) {
-						throw new RestClientException(ex);
-					}
-
-					Optional.ofNullable(properties.get("mapresponsetovariable"))
-							.map(o -> (Object[]) o)
-							.map(Arrays::stream)
-							.orElseGet(Stream::empty)
-							.map(o -> (Map<String, String>) o)
-							.forEach(row -> {
-								String[] responseVariables = row.get("responseValue").split("\\.");
-
-//								JsonElement currentElement = completeElement;
-//								for (String responseVariable : responseVariables) {
-//									if (currentElement == null)
-//										break;
-//
-//									currentElement = getJsonResultVariable(responseVariable, currentElement);
-//								}
-//
-//								if (currentElement != null && currentElement.isJsonPrimitive()) {
-//									if (isDebug())
-//										LogUtil.info(getClassName(), "Setting workflow variable [" + row.get("workflowVariable") + "] with [" + currentElement.getAsString() + "]");
-//									workflowManager.processVariable(workflowAssignment.getProcessId(), row.get("workflowVariable"), currentElement.getAsString());
-//								}
-
-								boolean doNotOverwriteIfValueEmpty = "true".equalsIgnoreCase(getPropertyString("doNotOverwriteIfValueEmpty"));
-								getJsonResultVariableValue(row.get("responseValue"), completeElement)
-										.filter(s -> !(s.isEmpty() && doNotOverwriteIfValueEmpty)) // do not write empty value
-										.ifPresent(s -> {
-											if (isDebug()) {
-												LogUtil.info(getClassName(), "Setting workflow variable [" + row.get("workflowVariable") + "] with [" + s + "]");
-											}
-
-											workflowManager.activityVariable(workflowAssignment.getActivityId(), row.get("workflowVariable"), s);
-										});
-							});
-
-					// Form Binding
-					String formDefId = getPropertyString("formDefId");
-					if (!formDefId.isEmpty()) {
-						Form form = generateForm(formDefId);
-
-						try {
-							String recordPath = getPropertyString("jsonRecordPath");
-							Object[] fieldMapping = (Object[]) getProperty("fieldMapping");
-
-							Pattern recordPattern = Pattern.compile(recordPath.replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
-							Map<String, Pattern> fieldPattern = new HashMap<String, Pattern>();
-							for (Object o : fieldMapping) {
-								Map<String, String> mapping = (Map<String, String>) o;
-								Pattern pattern = Pattern.compile(mapping.get("jsonPath").replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
-								fieldPattern.put(mapping.get("formField"), pattern);
-							}
-
-							AppService appService = (AppService) appContext.getBean("appService");
-							FormRowSet result = new FormRowSet();
-							String primaryKey = appService.getOriginProcessId(workflowAssignment.getProcessId());
-							parseJson("", completeElement, recordPattern, fieldPattern, true, result, null, getPropertyString("foreignKey"), primaryKey);
-
-							if (isDebug()) {
-								result.stream()
-										.peek(r -> LogUtil.info(getClassName(), "-------Row Set-------"))
-										.flatMap(r -> r.entrySet().stream())
-										.forEach(e -> LogUtil.info(getClassName(), "key [" + e.getKey() + "] value [" + e.getValue() + "]"));
-							}
-
-							// save data to form
-							form.getStoreBinder().store(form, result, new FormData());
-						} catch (JsonSyntaxException ex) {
-							LogUtil.error(getClassName(), ex, ex.getMessage());
-						}
-					}
-				}
-			} catch (IOException e) {
-				LogUtil.error(getClassName(), e, e.getMessage());
+			final HttpEntity entity = response.getEntity();
+			if(entity == null) {
+				throw new RestClientException("NULL response");
 			}
-		} catch (RestClientException e) {
+
+			final String responseBody;
+			try(final BufferedReader br = new BufferedReader(new InputStreamReader(entity.getContent()))) {
+				responseBody = br.lines().collect(Collectors.joining());
+			} catch (IOException e) {
+				throw new RestClientException(e);
+			}
+
+			final int statusCode = getResponseStatus(response);
+			final String responseContentType = getResponseContentType(response);
+
+			if (isDebug()) {
+				LogUtil.info(getClassName(), "Response Status [" + statusCode + "] Content-Type [" + responseContentType + "] body [" + responseBody + "]");
+			}
+
+			if(getStatusGroupCode(statusCode) != 200) {
+				throw new RestClientException("Response code [" + statusCode + "] is not 200 (Success)");
+			}
+
+			if (!Optional.ofNullable(statusCodeworkflowVariable).orElse("").isEmpty()) {
+				workflowManager.processVariable(workflowAssignment.getProcessId(), statusCodeworkflowVariable, String.valueOf(statusCode));
+			}
+
+			if (!isJsonResponse(response)) {
+				throw new RestClientException("Content-Type : [" + responseContentType + "] not supported");
+			}
+
+			final JsonElement completeElement;
+			try {
+				completeElement = new JsonParser().parse(responseBody);
+			} catch (JsonSyntaxException ex) {
+				throw new RestClientException(ex);
+			}
+
+			Optional.ofNullable(properties.get("mapresponsetovariable"))
+					.map(o -> (Object[]) o)
+					.map(Arrays::stream)
+					.orElseGet(Stream::empty)
+					.map(o -> (Map<String, String>) o)
+					.forEach(row -> {
+						boolean doNotOverwriteIfValueEmpty = "true".equalsIgnoreCase(getPropertyString("doNotOverwriteIfValueEmpty"));
+						getJsonResultVariableValue(row.get("responseValue"), completeElement)
+								.filter(s -> !(s.isEmpty() && doNotOverwriteIfValueEmpty)) // do not write empty value
+								.ifPresent(s -> {
+									if (isDebug()) {
+										LogUtil.info(getClassName(), "Setting workflow variable [" + row.get("workflowVariable") + "] with [" + s + "]");
+									}
+
+									workflowManager.activityVariable(workflowAssignment.getActivityId(), row.get("workflowVariable"), s);
+								});
+					});
+
+			// Form Binding
+			final String formDefId = getPropertyString("formDefId");
+			if (formDefId.isEmpty()) {
+				LogUtil.warn(getClassName(), "Error loading property [formDefId]");
+				return null;
+			}
+
+			final Form form = generateForm(formDefId);
+			final String recordPath = getPropertyString("jsonRecordPath");
+			final Object[] fieldMapping = (Object[]) getProperty("fieldMapping");
+
+			final Pattern recordPattern = Pattern.compile(recordPath.replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
+			final Map<String, Pattern> fieldPattern = new HashMap<>();
+			for (Object o : fieldMapping) {
+				Map<String, String> mapping = (Map<String, String>) o;
+				Pattern pattern = Pattern.compile(mapping.get("jsonPath").replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
+				fieldPattern.put(mapping.get("formField"), pattern);
+			}
+
+			final AppService appService = (AppService) appContext.getBean("appService");
+			final FormRowSet result = new FormRowSet();
+			final String primaryKey = appService.getOriginProcessId(workflowAssignment.getProcessId());
+			parseJson("", completeElement, recordPattern, fieldPattern, true, result, null, getPropertyString("foreignKey"), primaryKey);
+
+			if (isDebug()) {
+				result.stream()
+						.peek(r -> LogUtil.info(getClassName(), "-------Row Set-------"))
+						.flatMap(r -> r.entrySet().stream())
+						.forEach(e -> LogUtil.info(getClassName(), "key [" + e.getKey() + "] value [" + e.getValue() + "]"));
+			}
+
+			// save data to form
+			form.getStoreBinder().store(form, result, new FormData());
+		} catch (IOException | RestClientException | JsonSyntaxException e) {
 			LogUtil.error(getClassName(), e, e.getMessage());
 		}
 
