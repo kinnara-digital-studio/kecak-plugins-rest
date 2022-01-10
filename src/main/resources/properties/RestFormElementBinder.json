@@ -11,7 +11,7 @@
         "label" : "@@rest.apiUrl@@",
         "type" : "textfield",
         "required" : "True",
-        "description": "@@rest.apiUrl.desc@@"
+        "description": "@@rest.apiUrl.description@@"
       }, {
         "name" : "method",
         "label" : "@@rest.method@@",
@@ -115,6 +115,23 @@
         "label" : "@@rest.recordPath@@",
         "type" : "textfield"
       }
+    ]
+  },
+  {
+    "title" : "@@rest.response.mapping@@",
+    "properties" : [
+    	{
+	    	name : 'responseMapping',
+	    	label : '@@rest.response.mapping.grid@@',
+	    	type : 'grid',
+	    	columns : [{
+	    		key : 'restProperties',
+	    		label : '@@rest.response.mapping.restProperties@@'
+	    	}, {
+	    		key : 'formField',
+	    		label : '@@rest.response.mapping.formField@@'
+	    	}]
+    	}
     ]
   },
   {

@@ -78,7 +78,7 @@ public class RestStoreBinder extends FormBinder implements FormStoreElementBinde
             final HttpEntity httpEntity = getRequestEntity(workflowAssignment, variables);
             final HttpUriRequest request = getHttpRequest(workflowAssignment, url, getPropertyMethod(), getPropertyHeaders(workflowAssignment), httpEntity, variables);
             final HttpResponse response = client.execute(request);
-            return ifNullThen(handleResponse(response), rowSet);
+            return ifNullThen(handleResponse(response, null), rowSet);
         } catch (RestClientException | IOException e) {
             LogUtil.error(getClassName(), e, e.getMessage());
         }

@@ -62,7 +62,9 @@ public class RestFormElementBinder extends FormBinder implements FormLoadElement
             } else if(statusCode != 200) {
                 LogUtil.warn(getClassName(), "Response code [" + statusCode + "] is considered as success");
             }
-            return handleResponse(response);
+            Object[] mappingObj = (Object[]) getProperty("responseMapping");
+            
+            return handleResponse(response, mappingObj);
         } catch (IOException | RestClientException e) {
             LogUtil.error(getClassName(), e, e.getMessage());
         }
@@ -93,7 +95,7 @@ public class RestFormElementBinder extends FormBinder implements FormLoadElement
             final HttpEntity httpEntity = getRequestEntity(workflowAssignment, variables);
             final HttpUriRequest request = getHttpRequest(workflowAssignment, url, getPropertyMethod(), getPropertyHeaders(workflowAssignment), httpEntity, variables);
             final HttpResponse response = client.execute(request);
-            return ifNullThen(handleResponse(response), rowSet);
+            return ifNullThen(handleResponse(response, null), rowSet);
         } catch (RestClientException | IOException e) {
             LogUtil.error(getClassName(), e, e.getMessage());
         }

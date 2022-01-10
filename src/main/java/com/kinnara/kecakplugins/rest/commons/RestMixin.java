@@ -40,7 +40,6 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.springframework.context.ApplicationContext;
-import org.springframework.security.access.method.P;
 import org.xml.sax.SAXException;
 
 import javax.annotation.Nonnull;
@@ -579,10 +578,10 @@ public interface RestMixin extends PropertyEditable, Unclutter {
      * @return
      * @throws RestClientException
      */
-    default FormRowSet handleJsonResponse(@Nonnull HttpResponse response) throws RestClientException {
+    default FormRowSet handleJsonResponse(@Nonnull HttpResponse response, Object[] mapping) throws RestClientException {
         Pattern recordPattern = Pattern.compile(getPropertyRecordPath().replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
 
-        return Optional.of(response)
+        FormRowSet jsonResult = Optional.of(response)
                 .map(HttpResponse::getEntity)
                 .map(throwableFunction(HttpEntity::getContent))
                 .map(throwableFunction(is -> {
@@ -591,17 +590,31 @@ public interface RestMixin extends PropertyEditable, Unclutter {
 
                         JsonParser parser = new JsonParser();
                         JsonElement jsonElement = parser.parse(reader);
-
+                        
                         if (isDebug()) {
                             LogUtil.info(getClass().getName(), "handleJsonResponse : jsonElement [" + jsonElement.toString() + "]");
                         }
 
                         JsonHandler handler = new JsonHandler(jsonElement, recordPattern);
-                        FormRowSet result = handler.parse(1);
-                        return result;
+                        return handler.parse(1);
                     }
                 })).orElseThrow(() -> new RestClientException("Error parsing JSON response"));
-
+        
+        FormRowSet result = new FormRowSet();
+        for(FormRow formRow: jsonResult) {
+        	FormRow newRow = new FormRow();
+            for(Object obj : mapping) {
+            	Map<String, String> row = (Map<String, String>)obj;
+            	String restProperties = row.get("restProperties");
+            	String formField = row.get("formField");
+            	if(formRow.getProperty(restProperties)!=null) {
+            		newRow.setProperty(formField, formRow.getProperty(restProperties));
+            		result.add(newRow);
+            	}
+            }
+        }
+        result.addAll(jsonResult);
+        return result;
     }
 
     /**
@@ -636,7 +649,7 @@ public interface RestMixin extends PropertyEditable, Unclutter {
      * @throws RestClientException
      */
     @Nullable
-    default FormRowSet handleResponse(@Nonnull HttpResponse response) throws RestClientException {
+    default FormRowSet handleResponse(@Nonnull HttpResponse response, Object[] mapping) throws RestClientException {
         int statusCode = getResponseStatus(response);
         String responseContentType = getResponseContentType(response);
 
@@ -650,7 +663,7 @@ public interface RestMixin extends PropertyEditable, Unclutter {
         }
 
         if(isJsonResponse(response)) {
-            return handleJsonResponse(response);
+            return handleJsonResponse(response, mapping);
         } else if(isXmlResponse(response)) {
             return handleXmlResponse(response);
         } else {
@@ -659,7 +672,7 @@ public interface RestMixin extends PropertyEditable, Unclutter {
             }
 
             LogUtil.warn(getClassName(), "Unsupported response content type [" + responseContentType + "], assume JSON response");
-            return handleJsonResponse(response);
+            return handleJsonResponse(response, mapping);
         }
     }
 
