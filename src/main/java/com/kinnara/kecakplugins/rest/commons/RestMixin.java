@@ -603,14 +603,16 @@ public interface RestMixin extends PropertyEditable, Unclutter {
         FormRowSet result = new FormRowSet();
         for(FormRow formRow: jsonResult) {
         	FormRow newRow = new FormRow();
-            for(Object obj : mapping) {
-            	Map<String, String> row = (Map<String, String>)obj;
-            	String restProperties = row.get("restProperties");
-            	String formField = row.get("formField");
-            	if(formRow.getProperty(restProperties)!=null) {
-            		newRow.setProperty(formField, formRow.getProperty(restProperties));
-            		result.add(newRow);
-            	}
+            if(mapping != null) {
+                for (Object obj : mapping) {
+                    final Map<String, String> row = (Map<String, String>) obj;
+                    String restProperties = row.get("restProperties");
+                    String formField = row.get("formField");
+                    if (formRow.getProperty(restProperties) != null) {
+                        newRow.setProperty(formField, formRow.getProperty(restProperties));
+                        result.add(newRow);
+                    }
+                }
             }
         }
         result.addAll(jsonResult);
