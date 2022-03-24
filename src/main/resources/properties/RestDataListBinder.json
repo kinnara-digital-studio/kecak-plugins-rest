@@ -8,6 +8,16 @@
                 "type" : "textfield",
                 "required" : "true"
             }, {
+                "name" : "headers",
+                "label" : "@@restDataListBinder.headers@@",
+                "type" : "grid",
+                "columns" : [{
+                    "key" : "key", "label" : "@@restDataListBinder.key@@"
+                }, {
+                    "key" : "value", "label" : "@@restDataListBinder.value@@"
+                }]
+            },
+            {
                 "name" : "parameters",
                 "label" : "@@restDataListBinder.parameters@@",
                 "type" : "grid",
@@ -17,16 +27,22 @@
                 }, {
                     "key" : "value", "label" : "@@restDataListBinder.value@@"
                 }]
-            }, {
-                "name" : "headers",
-                "label" : "@@restDataListBinder.headers@@",
-                "type" : "grid",
-                "columns" : [{
-                    "key" : "key", "label" : "@@restDataListBinder.key@@"
-                }, {
-                    "key" : "value", "label" : "@@restDataListBinder.value@@"
-                }]
-            }, {
+            },
+            {
+                "name": "parameterStartRow",
+                "label": "Start Row parameter",
+                "type": "textfield"
+            },
+            {
+                "name": "parameterEndRow",
+                "label": "End Row parameter",
+                "type": "textfield"
+            },
+            {
+                "label": "Response",
+                "type": "header"
+            },
+            {
                 "name" : "recordPath",
                 "label" : "@@restDataListBinder.recordPath@@",
                 "type" : "textfield"
