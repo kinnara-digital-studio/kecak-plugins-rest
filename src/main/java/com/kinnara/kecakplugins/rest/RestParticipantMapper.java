@@ -14,6 +14,7 @@ import org.apache.http.client.methods.HttpUriRequest;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.form.model.FormRowSet;
 import org.joget.commons.util.LogUtil;
+import org.joget.plugin.base.PluginManager;
 import org.joget.workflow.model.DefaultParticipantPlugin;
 import org.joget.workflow.model.WorkflowActivity;
 
@@ -23,6 +24,7 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
+import java.util.ResourceBundle;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -97,7 +99,10 @@ public class RestParticipantMapper extends DefaultParticipantPlugin implements R
 
 	@Override
 	public String getVersion() {
-		return getClass().getPackage().getImplementationVersion();
+		PluginManager pluginManager = (PluginManager) AppUtil.getApplicationContext().getBean("pluginManager");
+		ResourceBundle resourceBundle = pluginManager.getPluginMessageBundle(getClassName(), "/messages/BuildNumber");
+		String buildNumber = resourceBundle.getString("build.number");
+		return buildNumber;
 	}
 
 	@Override

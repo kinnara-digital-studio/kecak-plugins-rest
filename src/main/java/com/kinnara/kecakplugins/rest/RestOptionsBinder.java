@@ -16,6 +16,7 @@ import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.form.model.*;
 import org.joget.apps.form.service.FormUtil;
 import org.joget.commons.util.LogUtil;
+import org.joget.plugin.base.PluginManager;
 import org.joget.workflow.model.WorkflowAssignment;
 import org.joget.workflow.model.service.WorkflowManager;
 import org.springframework.context.ApplicationContext;
@@ -28,6 +29,7 @@ import javax.xml.parsers.SAXParserFactory;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.ResourceBundle;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
@@ -47,8 +49,11 @@ public class RestOptionsBinder extends FormBinder implements FormLoadOptionsBind
     }
 
     public String getVersion() {
-        return getClass().getPackage().getImplementationVersion();
-    }
+		PluginManager pluginManager = (PluginManager) AppUtil.getApplicationContext().getBean("pluginManager");
+		ResourceBundle resourceBundle = pluginManager.getPluginMessageBundle(getClassName(), "/messages/BuildNumber");
+		String buildNumber = resourceBundle.getString("build.number");
+		return buildNumber;
+	}
 
     public String getDescription() {
     	return "Artifact ID : " + getClass().getPackage().getImplementationTitle();

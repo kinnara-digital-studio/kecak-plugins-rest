@@ -15,6 +15,7 @@ import org.joget.apps.datalist.model.*;
 import org.joget.apps.form.model.FormRow;
 import org.joget.apps.form.model.FormRowSet;
 import org.joget.commons.util.LogUtil;
+import org.joget.plugin.base.PluginManager;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -141,8 +142,11 @@ public class RestDatalistBinder extends DataListBinderDefault implements RestMix
 
 	@Override
     public String getVersion() {
-        return getClass().getPackage().getImplementationVersion();
-    }
+		PluginManager pluginManager = (PluginManager) AppUtil.getApplicationContext().getBean("pluginManager");
+		ResourceBundle resourceBundle = pluginManager.getPluginMessageBundle(getClassName(), "/messages/BuildNumber");
+		String buildNumber = resourceBundle.getString("build.number");
+		return buildNumber;
+	}
 
 	@Override
     public String getDescription() {
