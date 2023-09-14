@@ -1,0 +1,188 @@
+[
+  {
+    "title" : "@@resttool.editrequest@@",
+    "properties" : [
+      {
+        "name" : "url",
+        "label" : "@@resttool.apiUrl@@",
+        "type" : "textfield",
+        "required" : "True"
+      }, {
+        "name" : "method",
+        "label" : "@@resttool.method@@",
+        "type" : "selectbox",
+        "options" : [
+          {
+            "value" : "GET",
+            "label" : "GET"
+          }, {
+            "value" : "POST",
+            "label" : "POST"
+          }, {
+            "value" : "PUT",
+            "label" : "PUT"
+          }, {
+            "value" : "DELETE",
+            "label" : "DELETE"
+          }
+        ]
+      },  {
+        "name" : "parameters",
+        "label" : "@@resttool.parameters@@",
+        "type" : "grid",
+        "columns" : [
+          {"key" : "key", "label" : "@@resttool.key@@", "required" : "true"},
+          {"key" : "value", "label" : "@@resttool.value@@", "required" : "true"}
+        ]
+      }, {
+        "name" : "headers",
+        "label" : "@@resttool.headers@@",
+        "type" : "grid",
+        "columns" : [
+          {"key" : "key", "label" : "@@resttool.key@@", "required" : "true"},
+          {"key" : "value", "label" : "@@resttool.value@@", "required" : "true"}
+        ]
+      }, {
+        "name" : "contentType",
+        "label" : "@@resttool.contentType@@",
+        "type" : "selectbox",
+        "required" : "true",
+        "options" : [
+          {
+            "value" : "application/json",
+            "label" : "application/json"
+          },
+          {
+            "value" : "multipart/form-data",
+            "label" : "multipart/form-data"
+          }
+        ]
+      }, {
+        "name" : "body",
+        "label" : "@@resttool.body@@",
+        "type" : "CodeEditor",
+        "mode" : "json",
+        "control_field" : "contentType",
+        "control_value" : "application/json"
+      },
+      {
+        "name": "formData",
+        "label" : "@@rest.body@@",
+        "description" : "@@rest.body.description@@",
+        "type" : "grid",
+        "columns": [
+          {
+            "key": "key",
+            "label": "@@rest.key@@",
+            "required": "true"
+          },
+          {
+            "key": "value",
+            "label": "@@rest.value@@"
+          }
+        ],
+        "control_field" : "contentType",
+        "control_value" : "multipart/form-data"
+      }
+    ]
+  }, {
+  "title" : "@@resttool.editresponse@@",
+  "properties" : [
+    {
+      "name" : "mapresponsetovariable",
+      "label" : "@@resttool.mapresponsetovariable@@",
+      "type" : "grid",
+      "columns" : [
+        {
+          "key" : "responseValue",
+          "label" : "@@resttool.responseValue@@",
+          "required" : "true"
+        }, {
+          "key" : "workflowVariable",
+          "label" : "@@resttool.workflowVariable@@",
+          "required" : "true"
+        }
+      ]
+    }, {
+      "name" : "statusCodeworkflowVariable",
+      "label" : "@@resttool.statusCodeworkflowVariable@@",
+      "type" : "textfield"
+    }, {
+      "name": "doNotOverwriteIfValueEmpty",
+      "label": "@@resttool.doNotOverwriteIfValueEmpty@@",
+      "type": "checkbox",
+      "value": "false",
+      "options": [
+        {
+          "value": "true",
+          "label": ""
+        }
+      ]
+    }
+  ]
+}, {
+  "title" : "@@resttool.formBinding@@",
+  "properties" : [
+    {
+      "name" : "formDefId",
+      "label" : "@@resttool.formDefId@@",
+      "type" : "selectbox",
+      "description" : "@@resttool.formDefId.description@@",
+      "options_ajax":"[CONTEXT_PATH]/web/json/console/app[APP_PATH]/forms/options",
+      "url" : "[CONTEXT_PATH]/web/property/json[APP_PATH]/getPropertyOptions"
+    }, {
+      "name" : "foreignKey",
+      "label" : "@@resttool.foreignKey@@",
+      "description" : "@@resttool.foreignKey.description@@",
+      "type" : "textfield"
+    }, {
+      "name" : "jsonRecordPath",
+      "label" : "@@resttool.jsonRecordPath@@",
+      "type" : "textfield"
+    }, {
+      "name" : "fieldMapping",
+      "label" : "@@resttool.fieldMapping@@",
+      "type" : "grid",
+      "columns" : [
+        {
+          "key" : "jsonPath",
+          "label" : "@@resttool.jsonPath@@",
+          "required" : "true"
+        }, {
+          "key" : "formField",
+          "label" : "@@resttool.formField@@",
+          "required" : "true"
+        }
+      ]
+    }
+  ]
+},
+  {
+    "title" : "@@resttool.advanceSettings@@",
+    "properties" : [
+      {
+        "name" : "ignoreCertificateError",
+        "label" : "@@resttool.ignoreCertificateError@@",
+        "type" : "checkbox",
+        "options" : [
+          {
+            "value" : "true",
+            "label" : ""
+          }
+        ]
+      },
+      {
+        "name" : "debug",
+        "label" : "@@resttool.debug@@",
+        "description" : "@@resttool.debug.desc@@",
+        "type" : "checkbox",
+        "options" : [
+          {
+            "value" : "true",
+            "label" : ""
+          }
+        ]
+      }
+    ]
+  }
+]
