@@ -57,12 +57,12 @@ public class RestTool extends DefaultApplicationPlugin implements RestMixin, Unc
 	}
 
 	public String getName() {
-		return getLabel() + getVersion();
+		return LABEL;
 	}
 
 	public String getVersion() {
 		PluginManager pluginManager = (PluginManager) AppUtil.getApplicationContext().getBean("pluginManager");
-		ResourceBundle resourceBundle = pluginManager.getPluginMessageBundle(getClassName(), "/messages/BuildNumber");
+		ResourceBundle resourceBundle = pluginManager.getPluginMessageBundle(getClassName(), "/message/BuildNumber");
 		String buildNumber = resourceBundle.getString("build.number");
 		return buildNumber;
 	}
@@ -105,12 +105,12 @@ public class RestTool extends DefaultApplicationPlugin implements RestMixin, Unc
 				LogUtil.info(getClassName(), "Response Status [" + statusCode + "] Content-Type [" + responseContentType + "] body [" + responseBody + "]");
 			}
 
-			if(getStatusGroupCode(statusCode) != 200) {
-				throw new RestClientException("Response code [" + statusCode + "] is not 200 (Success)");
-			}
-
 			if (!Optional.ofNullable(statusCodeworkflowVariable).orElse("").isEmpty()) {
 				workflowManager.processVariable(workflowAssignment.getProcessId(), statusCodeworkflowVariable, String.valueOf(statusCode));
+			}
+
+			if(getStatusGroupCode(statusCode) != 200) {
+				throw new RestClientException("Response code [" + statusCode + "] is not 200 (Success)");
 			}
 
 			if (!isJsonResponse(response)) {

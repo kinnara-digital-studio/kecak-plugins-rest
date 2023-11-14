@@ -143,7 +143,7 @@ public class RestDatalistBinder extends DataListBinderDefault implements RestMix
 	@Override
     public String getVersion() {
 		PluginManager pluginManager = (PluginManager) AppUtil.getApplicationContext().getBean("pluginManager");
-		ResourceBundle resourceBundle = pluginManager.getPluginMessageBundle(getClassName(), "/messages/BuildNumber");
+		ResourceBundle resourceBundle = pluginManager.getPluginMessageBundle(getClassName(), "/message/BuildNumber");
 		String buildNumber = resourceBundle.getString("build.number");
 		return buildNumber;
 	}

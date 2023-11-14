@@ -45,12 +45,12 @@ public class RestOptionsBinder extends FormBinder implements FormLoadOptionsBind
 	private String LABEL = "REST Option Binder";
 	
     public String getName() {
-        return getLabel() + getVersion();
+        return getLabel();
     }
 
     public String getVersion() {
 		PluginManager pluginManager = (PluginManager) AppUtil.getApplicationContext().getBean("pluginManager");
-		ResourceBundle resourceBundle = pluginManager.getPluginMessageBundle(getClassName(), "/messages/BuildNumber");
+		ResourceBundle resourceBundle = pluginManager.getPluginMessageBundle(getClassName(), "/message/BuildNumber");
 		String buildNumber = resourceBundle.getString("build.number");
 		return buildNumber;
 	}
