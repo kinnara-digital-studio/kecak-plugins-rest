@@ -1,7 +1,7 @@
-package com.kinnara.kecakplugins.rest;
+package com.kinnarastudio.kecakplugins.rest;
 
-import com.kinnara.kecakplugins.rest.commons.RestMixin;
-import com.kinnara.kecakplugins.rest.exceptions.RestClientException;
+import com.kinnarastudio.kecakplugins.rest.commons.RestMixin;
+import com.kinnarastudio.kecakplugins.rest.exceptions.RestClientException;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;

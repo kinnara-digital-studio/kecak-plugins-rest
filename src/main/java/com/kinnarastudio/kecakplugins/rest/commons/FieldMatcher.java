@@ -1,4 +1,4 @@
-package com.kinnara.kecakplugins.rest.commons;
+package com.kinnarastudio.kecakplugins.rest.commons;
 
 import java.util.regex.Pattern;
 

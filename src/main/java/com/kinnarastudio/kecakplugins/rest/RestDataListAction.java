@@ -1,11 +1,11 @@
-package com.kinnara.kecakplugins.rest;
+package com.kinnarastudio.kecakplugins.rest;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
-import com.kinnara.kecakplugins.rest.commons.RestMixin;
-import com.kinnara.kecakplugins.rest.commons.Unclutter;
-import com.kinnara.kecakplugins.rest.exceptions.RestClientException;
+import com.kinnarastudio.kecakplugins.rest.commons.RestMixin;
+import com.kinnarastudio.kecakplugins.rest.commons.Unclutter;
+import com.kinnarastudio.kecakplugins.rest.exceptions.RestClientException;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
@@ -14,7 +14,6 @@ import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.datalist.model.*;
 import org.joget.apps.form.model.Form;
 import org.joget.apps.form.model.FormData;
-import org.joget.apps.form.model.FormRow;
 import org.joget.apps.form.model.FormRowSet;
 import org.joget.commons.util.LogUtil;
 import org.joget.plugin.base.PluginManager;

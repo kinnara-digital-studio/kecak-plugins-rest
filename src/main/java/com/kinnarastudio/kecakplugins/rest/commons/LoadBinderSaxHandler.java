@@ -1,4 +1,4 @@
-package com.kinnara.kecakplugins.rest.commons;
+package com.kinnarastudio.kecakplugins.rest.commons;
 
 import org.joget.apps.form.model.FormRow;
 import org.joget.apps.form.model.FormRowSet;

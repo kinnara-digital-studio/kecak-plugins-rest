@@ -1,4 +1,4 @@
-package com.kinnara.kecakplugins.rest.exceptions;
+package com.kinnarastudio.kecakplugins.rest.exceptions;
 
 /**
  * @author aristo

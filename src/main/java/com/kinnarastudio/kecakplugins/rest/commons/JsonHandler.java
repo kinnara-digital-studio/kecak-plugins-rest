@@ -1,4 +1,4 @@
-package com.kinnara.kecakplugins.rest.commons;
+package com.kinnarastudio.kecakplugins.rest.commons;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;

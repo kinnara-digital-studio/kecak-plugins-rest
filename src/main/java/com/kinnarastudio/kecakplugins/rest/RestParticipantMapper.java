@@ -1,13 +1,13 @@
-package com.kinnara.kecakplugins.rest;
+package com.kinnarastudio.kecakplugins.rest;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.stream.JsonReader;
-import com.kinnara.kecakplugins.rest.commons.JsonHandler;
-import com.kinnara.kecakplugins.rest.commons.RestMixin;
-import com.kinnara.kecakplugins.rest.exceptions.RestClientException;
+import com.kinnarastudio.kecakplugins.rest.commons.JsonHandler;
+import com.kinnarastudio.kecakplugins.rest.commons.RestMixin;
+import com.kinnarastudio.kecakplugins.rest.exceptions.RestClientException;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpUriRequest;

@@ -1,7 +1,7 @@
-package com.kinnara.kecakplugins.rest;
+package com.kinnarastudio.kecakplugins.rest;
 
-import com.kinnara.kecakplugins.rest.commons.RestMixin;
-import com.kinnara.kecakplugins.rest.exceptions.RestClientException;
+import com.kinnarastudio.kecakplugins.rest.commons.RestMixin;
+import com.kinnarastudio.kecakplugins.rest.exceptions.RestClientException;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
@@ -16,7 +16,6 @@ import org.springframework.context.ApplicationContext;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.stream.Collectors;
