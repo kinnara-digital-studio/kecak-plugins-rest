@@ -121,16 +121,19 @@
     "title" : "@@rest.response.mapping@@",
     "properties" : [
     	{
-	    	name : 'responseMapping',
-	    	label : '@@rest.response.mapping.grid@@',
-	    	type : 'grid',
-	    	columns : [{
-	    		key : 'restProperties',
-	    		label : '@@rest.response.mapping.restProperties@@'
-	    	}, {
-	    		key : 'formField',
-	    		label : '@@rest.response.mapping.formField@@'
-	    	}]
+	    	"name" : "responseMapping",
+	    	"label" : "@@rest.response.mapping.grid@@",
+	    	"type" : "grid",
+	    	"columns" : [
+              {
+	    		"key" : "restProperties",
+	    		"label" : "@@rest.response.mapping.restProperties@@",
+              },
+              {
+	    		"key" : "formField",
+	    		"label" : "@@rest.response.mapping.formField@@"
+	    	  }
+            ]
     	}
     ]
   },
