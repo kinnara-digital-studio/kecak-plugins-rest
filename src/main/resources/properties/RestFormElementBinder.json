@@ -127,7 +127,7 @@
 	    	"columns" : [
               {
 	    		"key" : "restProperties",
-	    		"label" : "@@rest.response.mapping.restProperties@@",
+	    		"label" : "@@rest.response.mapping.restProperties@@"
               },
               {
 	    		"key" : "formField",
