@@ -89,7 +89,7 @@ public class RestParticipantMapper extends DefaultParticipantPlugin implements R
 
 	@Override
 	public String getPropertyOptions() {
-		return AppUtil.readPluginResource(getClassName(), "/properties/restParticipantMapper.json", null, true, "message/restParticipantMapper");
+		return AppUtil.readPluginResource(getClassName(), "/properties/restParticipantMapper.json", null, true, "messages/restParticipantMapper");
 	}
 
 	@Override

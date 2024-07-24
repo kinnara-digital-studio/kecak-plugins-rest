@@ -58,7 +58,7 @@ public class RestLoadBinder extends FormBinder implements FormLoadElementBinder,
         String appVersion = appDef.getVersion().toString();
         Object[] arguments = new Object[]{appId, appVersion, appId, appVersion, appId, appVersion};
         String json;
-        json = AppUtil.readPluginResource(this.getClass().getName(), "/properties/RestLoadBinder.json", arguments, true, "message/Rest");
+        json = AppUtil.readPluginResource(this.getClass().getName(), "/properties/RestLoadBinder.json", arguments, true, "messages/Rest");
         return json;
     }
 

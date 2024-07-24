@@ -16,7 +16,6 @@ import org.springframework.context.ApplicationContext;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.stream.Collectors;
@@ -135,6 +134,6 @@ public class RestFormElementBinder extends FormBinder implements FormLoadElement
 
     @Override
     public String getPropertyOptions() {
-        return AppUtil.readPluginResource(getClassName(), "/properties/RestFormElementBinder.json", null, true, "/message/Rest");
+        return AppUtil.readPluginResource(getClassName(), "/properties/RestFormElementBinder.json", null, true, "/messages/Rest");
     }
 }

@@ -132,7 +132,7 @@ public class RestDatalistBinder extends DataListBinderDefault implements RestMix
 
 	@Override
 	public String getPropertyOptions() {
-		return AppUtil.readPluginResource(getClassName(), "/properties/RestDataListBinder.json", null, true, "message/RestDataListBinder");
+		return AppUtil.readPluginResource(getClassName(), "/properties/RestDataListBinder.json", null, true, "messages/RestDataListBinder");
 	}
 
 	@Override

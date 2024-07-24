@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
 public class DataListRestTool extends DefaultApplicationPlugin implements RestMixin, Unclutter {
     @Override
     public String getName() {
-        return getLabel() + getVersion();
+        return getLabel();
     }
 
     @Override
@@ -91,13 +91,6 @@ public class DataListRestTool extends DefaultApplicationPlugin implements RestMi
                             throw new RestClientException("Empty response");
                         }
 
-                        final int statusCode = getResponseStatus(response);
-                        if (getStatusGroupCode(statusCode) != 200) {
-                            throw new RestClientException("Response code [" + statusCode + "] is not 200 (Success)");
-                        } else if(statusCode != 200) {
-                            LogUtil.warn(getClassName(), "Response code [" + statusCode + "] is considered as success");
-                        }
-
                         final String responseContentType = getResponseContentType(response);
 
                         try (BufferedReader br = new BufferedReader(new InputStreamReader(response.getEntity().getContent()))) {
@@ -105,6 +98,13 @@ public class DataListRestTool extends DefaultApplicationPlugin implements RestMi
 
                             if (isDebug()) {
                                 LogUtil.info(getClassName(), "Response Content-Type [" + responseContentType + "] body [" + responseBody + "]");
+                            }
+
+                            final int statusCode = getResponseStatus(response);
+                            if (getStatusGroupCode(statusCode) != 200) {
+                                throw new RestClientException("Response code [" + statusCode + "] is not 200 (Success)");
+                            } else if(statusCode != 200) {
+                                LogUtil.warn(getClassName(), "Response code [" + statusCode + "] is considered as success");
                             }
 
                             if (!isJsonResponse(response)) {
@@ -228,7 +228,7 @@ public class DataListRestTool extends DefaultApplicationPlugin implements RestMi
 
     @Override
     public String getPropertyOptions() {
-        return AppUtil.readPluginResource(getClassName(), "/properties/DataListRestTool.json", null, true, "/message/Rest");
+        return AppUtil.readPluginResource(getClassName(), "/properties/DataListRestTool.json", null, true, "/messages/Rest");
     }
 
     protected String getStatusVariable() {

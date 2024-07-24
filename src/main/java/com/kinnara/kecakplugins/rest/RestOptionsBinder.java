@@ -68,7 +68,7 @@ public class RestOptionsBinder extends FormBinder implements FormLoadOptionsBind
     }
 
     public String getPropertyOptions() {
-        return AppUtil.readPluginResource(getClassName(), "/properties/RestOptionBinder.json", null, false, "message/Rest");
+        return AppUtil.readPluginResource(getClassName(), "/properties/RestOptionBinder.json", null, false, "messages/Rest");
     }
 
     @Override

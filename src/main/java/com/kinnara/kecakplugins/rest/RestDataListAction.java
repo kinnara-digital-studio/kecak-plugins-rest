@@ -14,7 +14,6 @@ import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.datalist.model.*;
 import org.joget.apps.form.model.Form;
 import org.joget.apps.form.model.FormData;
-import org.joget.apps.form.model.FormRow;
 import org.joget.apps.form.model.FormRowSet;
 import org.joget.commons.util.LogUtil;
 import org.joget.plugin.base.PluginManager;
@@ -195,7 +194,7 @@ public class RestDataListAction extends DataListActionDefault implements RestMix
 
     @Override
     public String getPropertyOptions() {
-        return AppUtil.readPluginResource(getClassName(), "properties/RestDataListAction.json", null, true, "message/Rest");
+        return AppUtil.readPluginResource(getClassName(), "properties/RestDataListAction.json", null, true, "messages/Rest");
     }
 
     private DataListFilterQueryObject getFilterIds(DataList dataList, String[] ids) {

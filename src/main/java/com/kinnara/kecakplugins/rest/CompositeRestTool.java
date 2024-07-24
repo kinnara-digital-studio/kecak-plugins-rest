@@ -52,7 +52,7 @@ public class CompositeRestTool extends DefaultApplicationPlugin implements RestM
 		String appId = appDef.getId();
 		String appVersion = appDef.getVersion().toString();
 		Object[] arguments = new Object[]{appId, appVersion, appId, appVersion, appId, appVersion};
-		String json = AppUtil.readPluginResource(this.getClass().getName(), "/properties/restTool.json", arguments, true, "message/restTool");
+		String json = AppUtil.readPluginResource(this.getClass().getName(), "/properties/restTool.json", arguments, true, "messages/restTool");
 		return json;
 	}
 
