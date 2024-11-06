@@ -1,9 +1,10 @@
-package com.kinnara.kecakplugins.rest;
+package com.kinnara.kecakplugins.rest.datalist;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
 import com.google.gson.stream.JsonReader;
+import com.kinnara.kecakplugins.rest.form.RestOptionsBinder;
 import com.kinnara.kecakplugins.rest.commons.JsonHandler;
 import com.kinnara.kecakplugins.rest.commons.RestMixin;
 import com.kinnara.kecakplugins.rest.exceptions.RestClientException;
@@ -132,7 +133,7 @@ public class RestDatalistBinder extends DataListBinderDefault implements RestMix
 
 	@Override
 	public String getPropertyOptions() {
-		return AppUtil.readPluginResource(getClassName(), "/properties/RestDataListBinder.json", null, true, "messages/RestDataListBinder");
+		return AppUtil.readPluginResource(getClassName(), "/properties/datalist/RestDataListBinder.json", null, true, "messages/RestDataListBinder");
 	}
 
 	@Override

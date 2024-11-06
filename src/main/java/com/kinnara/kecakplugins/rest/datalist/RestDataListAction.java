@@ -1,4 +1,4 @@
-package com.kinnara.kecakplugins.rest;
+package com.kinnara.kecakplugins.rest.datalist;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
@@ -194,7 +194,7 @@ public class RestDataListAction extends DataListActionDefault implements RestMix
 
     @Override
     public String getPropertyOptions() {
-        return AppUtil.readPluginResource(getClassName(), "properties/RestDataListAction.json", null, true, "messages/Rest");
+        return AppUtil.readPluginResource(getClassName(), "properties/datalist/RestDataListAction.json", null, true, "messages/Rest");
     }
 
     private DataListFilterQueryObject getFilterIds(DataList dataList, String[] ids) {

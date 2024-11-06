@@ -1,4 +1,4 @@
-package com.kinnara.kecakplugins.rest;
+package com.kinnara.kecakplugins.rest.process;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -89,7 +89,7 @@ public class RestParticipantMapper extends DefaultParticipantPlugin implements R
 
 	@Override
 	public String getPropertyOptions() {
-		return AppUtil.readPluginResource(getClassName(), "/properties/restParticipantMapper.json", null, true, "messages/restParticipantMapper");
+		return AppUtil.readPluginResource(getClassName(), "/properties/process/restParticipantMapper.json", null, true, "messages/restParticipantMapper");
 	}
 
 	@Override

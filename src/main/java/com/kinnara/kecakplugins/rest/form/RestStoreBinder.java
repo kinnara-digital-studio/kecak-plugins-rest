@@ -1,4 +1,4 @@
-package com.kinnara.kecakplugins.rest;
+package com.kinnara.kecakplugins.rest.form;
 
 import com.kinnara.kecakplugins.rest.commons.RestMixin;
 import com.kinnara.kecakplugins.rest.exceptions.RestClientException;
@@ -42,7 +42,7 @@ public class RestStoreBinder extends FormBinder implements FormStoreElementBinde
         String appId = appDef.getId();
         String appVersion = appDef.getVersion().toString();
         Object[] arguments = new Object[]{appId, appVersion, appId, appVersion, appId, appVersion};
-        return AppUtil.readPluginResource(this.getClass().getName(), "/properties/restStoreBinder.json", arguments, true, "messages/Rest");
+        return AppUtil.readPluginResource(this.getClass().getName(), "/properties/form/restStoreBinder.json", arguments, true, "messages/Rest");
     }
 
     public String getName() {

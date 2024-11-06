@@ -1,4 +1,4 @@
-package com.kinnara.kecakplugins.rest;
+package com.kinnara.kecakplugins.rest.process;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
@@ -52,7 +52,7 @@ public class CompositeRestTool extends DefaultApplicationPlugin implements RestM
 		String appId = appDef.getId();
 		String appVersion = appDef.getVersion().toString();
 		Object[] arguments = new Object[]{appId, appVersion, appId, appVersion, appId, appVersion};
-		String json = AppUtil.readPluginResource(this.getClass().getName(), "/properties/restTool.json", arguments, true, "messages/restTool");
+		String json = AppUtil.readPluginResource(this.getClass().getName(), "/properties/process/restTool.json", arguments, true, "messages/restTool");
 		return json;
 	}
 
