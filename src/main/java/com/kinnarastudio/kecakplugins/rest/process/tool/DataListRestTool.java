@@ -1,4 +1,4 @@
-package com.kinnarastudio.kecakplugins.rest;
+package com.kinnarastudio.kecakplugins.rest.process.tool;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
@@ -23,6 +23,7 @@ import org.joget.workflow.model.WorkflowAssignment;
 import org.joget.workflow.model.service.WorkflowManager;
 
 import java.io.BufferedReader;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.*;
 import java.util.regex.Pattern;
@@ -68,7 +69,7 @@ public class DataListRestTool extends DefaultApplicationPlugin implements RestMi
             final HttpClient client = getHttpClient(isIgnoreCertificateError());
 
             long processingRows = rows.size();
-            if(isDebug()) {
+            if (isDebug()) {
                 LogUtil.info(getClassName(), "Processing [" + processingRows + "] rows");
             }
 
@@ -94,13 +95,14 @@ public class DataListRestTool extends DefaultApplicationPlugin implements RestMi
                         final int statusCode = getResponseStatus(response);
                         if (getStatusGroupCode(statusCode) != 200) {
                             throw new RestClientException("Response code [" + statusCode + "] is not 200 (Success)");
-                        } else if(statusCode != 200) {
+                        } else if (statusCode != 200) {
                             LogUtil.warn(getClassName(), "Response code [" + statusCode + "] is considered as success");
                         }
 
                         final String responseContentType = getResponseContentType(response);
+                        try (InputStream is = entity.getContent();
+                             BufferedReader br = new BufferedReader(new InputStreamReader(is))) {
 
-                        try (BufferedReader br = new BufferedReader(new InputStreamReader(response.getEntity().getContent()))) {
                             String responseBody = br.lines().collect(Collectors.joining());
 
                             if (isDebug()) {
@@ -121,21 +123,21 @@ public class DataListRestTool extends DefaultApplicationPlugin implements RestMi
 
                             // Handle success status
                             String successStatusPath = getSuccessStatusPath();
-                            if(!successStatusPath.isEmpty()) {
+                            if (!successStatusPath.isEmpty()) {
                                 String successStatusValue = getSuccessStatusValue(workflowAssignment);
                                 String responseSuccessStatusValue = getJsonResultVariableValue(successStatusPath, completeElement).orElse("");
-                                if(!responseSuccessStatusValue.equals(successStatusValue)) {
+                                if (!responseSuccessStatusValue.equals(successStatusValue)) {
                                     fails = true;
-                                    LogUtil.warn(getClassName(), "Response path [" + successStatusPath + "] with value [" + responseSuccessStatusValue + "] is not indicated as success ["+successStatusValue+"]");
+                                    LogUtil.warn(getClassName(), "Response path [" + successStatusPath + "] with value [" + responseSuccessStatusValue + "] is not indicated as success [" + successStatusValue + "]");
                                 }
                             }
 
                             // Handle failed status
                             String failedStatusPath = getFailedStatusPath();
-                            if(!failedStatusPath.isEmpty()) {
+                            if (!failedStatusPath.isEmpty()) {
                                 String failedStatusValue = getFailedStatusValue(workflowAssignment);
                                 String responseFailedStatusValue = getJsonResultVariableValue(failedStatusPath, completeElement).orElse("");
-                                if(responseFailedStatusValue.equals(failedStatusValue)) {
+                                if (responseFailedStatusValue.equals(failedStatusValue)) {
                                     fails = true;
                                     LogUtil.warn(getClassName(), "Response path [" + successStatusPath + "] with value [" + responseFailedStatusValue + "] is indicated as failed [" + failedStatusValue + "]");
                                 }
@@ -168,7 +170,7 @@ public class DataListRestTool extends DefaultApplicationPlugin implements RestMi
                                             FormData formData = new FormData();
                                             formData.setPrimaryKeyValue(row.getId());
 
-                                            if(workflowAssignment != null) {
+                                            if (workflowAssignment != null) {
                                                 formData.setActivityId(workflowAssignment.getActivityId());
                                                 formData.setProcessId(workflowAssignment.getProcessId());
                                             }
@@ -191,20 +193,20 @@ public class DataListRestTool extends DefaultApplicationPlugin implements RestMi
             }
 
             String statusVariable = getStatusVariable();
-            if(!statusVariable.isEmpty() && workflowAssignment != null) {
+            if (!statusVariable.isEmpty() && workflowAssignment != null) {
                 String statusValue;
-                if(processingRows == 0) {
+                if (processingRows == 0) {
                     statusValue = getValueNoData(workflowAssignment);
-                } else if(processedRows == 0) {
+                } else if (processedRows == 0) {
                     statusValue = getValueNoneSuccess(workflowAssignment);
-                } else if(processingRows == processedRows) {
+                } else if (processingRows == processedRows) {
                     statusValue = getValueFullSuccess(workflowAssignment);
                 } else {
                     statusValue = getValuePartialSuccess(workflowAssignment);
                 }
 
-                if(isDebug()) {
-                    LogUtil.info(getClassName(), "Setting status variable ["+statusVariable+"] with value ["+statusValue+"]");
+                if (isDebug()) {
+                    LogUtil.info(getClassName(), "Setting status variable [" + statusVariable + "] with value [" + statusValue + "]");
                 }
 
                 workflowManager.processVariable(workflowAssignment.getProcessId(), statusVariable, statusValue);

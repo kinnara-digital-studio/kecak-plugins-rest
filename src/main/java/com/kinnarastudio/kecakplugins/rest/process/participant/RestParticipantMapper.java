@@ -1,4 +1,4 @@
-package com.kinnarastudio.kecakplugins.rest;
+package com.kinnarastudio.kecakplugins.rest.process.participant;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;

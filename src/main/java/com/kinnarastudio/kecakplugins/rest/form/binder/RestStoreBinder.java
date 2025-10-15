@@ -1,4 +1,4 @@
-package com.kinnarastudio.kecakplugins.rest;
+package com.kinnarastudio.kecakplugins.rest.form.binder;
 
 import com.kinnarastudio.kecakplugins.rest.commons.RestMixin;
 import com.kinnarastudio.kecakplugins.rest.exceptions.RestClientException;

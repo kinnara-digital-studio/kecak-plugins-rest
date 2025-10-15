@@ -1,4 +1,4 @@
-package com.kinnarastudio.kecakplugins.rest;
+package com.kinnarastudio.kecakplugins.rest.form.binder;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
