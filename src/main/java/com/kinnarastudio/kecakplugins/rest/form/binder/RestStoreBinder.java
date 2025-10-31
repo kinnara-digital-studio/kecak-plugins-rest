@@ -3,9 +3,9 @@ package com.kinnarastudio.kecakplugins.rest.form.binder;
 import com.kinnarastudio.kecakplugins.rest.commons.RestMixin;
 import com.kinnarastudio.kecakplugins.rest.exceptions.RestClientException;
 import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpUriRequest;
+import org.apache.http.impl.client.CloseableHttpClient;
 import org.joget.apps.app.model.AppDefinition;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.form.model.*;
@@ -21,7 +21,6 @@ import java.util.ResourceBundle;
 
 /**
  * @author aristo
- *
  * @deprecated use {@link RestFormElementBinder}
  *
  */
@@ -63,8 +62,8 @@ public class RestStoreBinder extends FormBinder implements FormStoreElementBinde
     /**
      * Store to REST API
      *
-     * @param element Element
-     * @param rowSet FormRowSet
+     * @param element  Element
+     * @param rowSet   FormRowSet
      * @param formData FormData
      * @return
      */
@@ -77,13 +76,15 @@ public class RestStoreBinder extends FormBinder implements FormStoreElementBinde
         String url = getPropertyUrl(workflowAssignment)
                 .replaceAll(":id", ifEmptyThen(formData.getPrimaryKeyValue(), ""));
 
-        try {
+        try (CloseableHttpClient client = getHttpClient(isIgnoreCertificateError())) {
+
             final Map<String, String> variables = generateVariables(rowSet);
-            final HttpClient client = getHttpClient(isIgnoreCertificateError());
             final HttpEntity httpEntity = getRequestEntity(workflowAssignment, variables);
             final HttpUriRequest request = getHttpRequest(workflowAssignment, url, getPropertyMethod(), getPropertyHeaders(workflowAssignment), httpEntity, variables);
-            final HttpResponse response = client.execute(request);
-            return ifNullThen(handleResponse(response, null), rowSet);
+
+            try(CloseableHttpResponse response = client.execute(request)) {
+                return ifNullThen(handleResponse(response, null), rowSet);
+            }
         } catch (RestClientException | IOException e) {
             LogUtil.error(getClassName(), e, e.getMessage());
         }
