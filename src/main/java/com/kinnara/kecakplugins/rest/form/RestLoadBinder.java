@@ -3,9 +3,9 @@ package com.kinnara.kecakplugins.rest.form;
 import com.kinnara.kecakplugins.rest.commons.RestMixin;
 import com.kinnara.kecakplugins.rest.exceptions.RestClientException;
 import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpUriRequest;
+import org.apache.http.impl.client.CloseableHttpClient;
 import org.joget.apps.app.model.AppDefinition;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.form.model.*;
@@ -22,26 +22,25 @@ import java.util.ResourceBundle;
 
 /**
  * @author aristo
- *
  * @deprecated use {@link RestFormElementBinder}
  */
 @Deprecated
 public class RestLoadBinder extends FormBinder implements FormLoadElementBinder, RestMixin {
-	private String LABEL = "(Deprecated) REST Load Binder";
+    private String LABEL = "(Deprecated) REST Load Binder";
 
     public String getName() {
         return getLabel() + getVersion();
     }
 
     public String getVersion() {
-		PluginManager pluginManager = (PluginManager) AppUtil.getApplicationContext().getBean("pluginManager");
-		ResourceBundle resourceBundle = pluginManager.getPluginMessageBundle(getClassName(), "/messages/BuildNumber");
-		String buildNumber = resourceBundle.getString("build.number");
-		return buildNumber;
-	}
+        PluginManager pluginManager = (PluginManager) AppUtil.getApplicationContext().getBean("pluginManager");
+        ResourceBundle resourceBundle = pluginManager.getPluginMessageBundle(getClassName(), "/messages/BuildNumber");
+        String buildNumber = resourceBundle.getString("build.number");
+        return buildNumber;
+    }
 
     public String getDescription() {
-    	return "Artifact ID : " + getClass().getPackage().getImplementationTitle();
+        return "Artifact ID : " + getClass().getPackage().getImplementationTitle();
     }
 
     public String getLabel() {
@@ -62,38 +61,39 @@ public class RestLoadBinder extends FormBinder implements FormLoadElementBinder,
         return json;
     }
 
-	/**
-	 * Load from REST API
-	 *
-	 * @param element
-	 * @param primaryKey
-	 * @param formData
-	 * @return
-	 */
-	@Override
-	public FormRowSet load(Element element, String primaryKey, FormData formData) {
-		ApplicationContext appContext = AppUtil.getApplicationContext();
-		WorkflowManager workflowManager = (WorkflowManager)appContext.getBean("workflowManager");
-		WorkflowAssignment workflowAssignment = workflowManager.getAssignment(formData.getActivityId());
+    /**
+     * Load from REST API
+     *
+     * @param element
+     * @param primaryKey
+     * @param formData
+     * @return
+     */
+    @Override
+    public FormRowSet load(Element element, String primaryKey, FormData formData) {
+        ApplicationContext appContext = AppUtil.getApplicationContext();
+        WorkflowManager workflowManager = (WorkflowManager) appContext.getBean("workflowManager");
+        WorkflowAssignment workflowAssignment = workflowManager.getAssignment(formData.getActivityId());
 
-		if(isEmpty(primaryKey)) {
-			LogUtil.warn(getClassName(), "Primary Key is not provided");
-		}
+        if (isEmpty(primaryKey)) {
+            LogUtil.warn(getClassName(), "Primary Key is not provided");
+        }
 
-		try {
-			String url = getPropertyUrl(workflowAssignment)
-					.replaceAll(":id", ifEmptyThen(primaryKey, ""));
+        try (CloseableHttpClient client = getHttpClient(isIgnoreCertificateError())) {
+            String url = getPropertyUrl(workflowAssignment)
+                    .replaceAll(":id", ifEmptyThen(primaryKey, ""));
 
-			final Map<String, String> variables = Collections.singletonMap("id", primaryKey);
-			final HttpClient client = getHttpClient(isIgnoreCertificateError());
-			final HttpEntity httpEntity = getRequestEntity(workflowAssignment, variables);
-			final HttpUriRequest request = getHttpRequest(workflowAssignment, url, getPropertyMethod(), getPropertyHeaders(workflowAssignment), httpEntity, variables);
-			final HttpResponse response = client.execute(request);
-			return handleResponse(response, null);
-		} catch (IOException | RestClientException e) {
-			LogUtil.error(getClassName(), e, e.getMessage());
-		}
+            final Map<String, String> variables = Collections.singletonMap("id", primaryKey);
+            final HttpEntity httpEntity = getRequestEntity(workflowAssignment, variables);
+            final HttpUriRequest request = getHttpRequest(workflowAssignment, url, getPropertyMethod(), getPropertyHeaders(workflowAssignment), httpEntity, variables);
 
-		return null;
-	}
+            try(CloseableHttpResponse response = client.execute(request)) {
+                return handleResponse(response, null);
+            }
+        } catch (IOException | RestClientException e) {
+            LogUtil.error(getClassName(), e, e.getMessage());
+        }
+
+        return null;
+    }
 }

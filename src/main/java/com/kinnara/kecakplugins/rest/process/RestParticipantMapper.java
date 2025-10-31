@@ -10,7 +10,9 @@ import com.kinnara.kecakplugins.rest.commons.RestMixin;
 import com.kinnara.kecakplugins.rest.exceptions.RestClientException;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpUriRequest;
+import org.apache.http.impl.client.CloseableHttpClient;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.form.model.FormRowSet;
 import org.joget.commons.util.LogUtil;
@@ -35,42 +37,45 @@ public class RestParticipantMapper extends DefaultParticipantPlugin implements R
 	public Collection<String> getActivityAssignments(Map props) {
 		WorkflowActivity workflowActivity = (WorkflowActivity) props.get("workflowActivity");
 		Collection<String> approver = new ArrayList<>();
-		try {
+
+		try(CloseableHttpClient client = getHttpClient(isIgnoreCertificateError())) {
+
 			final String url = getPropertyUrl(null);
-			final HttpClient client = getHttpClient(isIgnoreCertificateError());
 			final HttpUriRequest request = getHttpRequest(null, url, getPropertyMethod(), getPropertyHeaders(null), null);
-			HttpResponse response = client.execute(request);
 
-			String responseContentType = getResponseContentType(response);
+            try(CloseableHttpResponse response = client.execute(request)) {
 
-			// get properties
-			String recordPath = getPropertyString("recordPath");
+                String responseContentType = getResponseContentType(response);
 
-			Pattern recordPattern = Pattern.compile(recordPath.replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
-			if(responseContentType.contains("json")) {
-				JsonParser parser = new JsonParser();
-				JsonElement element = parser.parse(new JsonReader(new InputStreamReader(response.getEntity().getContent())));
-				JsonHandler handler = new JsonHandler(element, recordPattern);
-				FormRowSet fRS = handler.parse();
-				if(element.isJsonArray()) {
-					JsonArray jArray = element.getAsJsonArray();
-				}else {
-					JsonObject jObj = element.getAsJsonObject();
-					if(jObj.get(getPropertyString("recordPath")).isJsonArray()) {
-						JsonArray arrData = (JsonArray) jObj.get(getPropertyString("recordPath"));
-						for(JsonElement elm: arrData) {
-							JsonObject objAppr = elm.getAsJsonObject();
-							approver.add(objAppr.get(getPropertyString("sfieldId")).getAsString());
-						}
-					}
-				}
-			}else {
-				LogUtil.warn(getClassName(), "Unsupported content type [" + responseContentType + "]");
-				try(BufferedReader br = new BufferedReader(new InputStreamReader(response.getEntity().getContent()))) {
-					String lines = br.lines().collect(Collectors.joining());
-					LogUtil.warn(getClassName(), "Response [" + lines + "]");
-				}
-			}
+                // get properties
+                String recordPath = getPropertyString("recordPath");
+
+                Pattern recordPattern = Pattern.compile(recordPath.replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
+                if (responseContentType.contains("json")) {
+                    JsonParser parser = new JsonParser();
+                    JsonElement element = parser.parse(new JsonReader(new InputStreamReader(response.getEntity().getContent())));
+                    JsonHandler handler = new JsonHandler(element, recordPattern);
+                    FormRowSet fRS = handler.parse();
+                    if (element.isJsonArray()) {
+                        JsonArray jArray = element.getAsJsonArray();
+                    } else {
+                        JsonObject jObj = element.getAsJsonObject();
+                        if (jObj.get(getPropertyString("recordPath")).isJsonArray()) {
+                            JsonArray arrData = (JsonArray) jObj.get(getPropertyString("recordPath"));
+                            for (JsonElement elm : arrData) {
+                                JsonObject objAppr = elm.getAsJsonObject();
+                                approver.add(objAppr.get(getPropertyString("sfieldId")).getAsString());
+                            }
+                        }
+                    }
+                } else {
+                    LogUtil.warn(getClassName(), "Unsupported content type [" + responseContentType + "]");
+                    try (BufferedReader br = new BufferedReader(new InputStreamReader(response.getEntity().getContent()))) {
+                        String lines = br.lines().collect(Collectors.joining());
+                        LogUtil.warn(getClassName(), "Response [" + lines + "]");
+                    }
+                }
+            }
 		} catch (IOException | RestClientException ex) {
 			LogUtil.error(this.getClass().getName(), ex,ex.getMessage());
 		}

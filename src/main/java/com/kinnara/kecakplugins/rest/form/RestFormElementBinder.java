@@ -5,7 +5,9 @@ import com.kinnara.kecakplugins.rest.exceptions.RestClientException;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpUriRequest;
+import org.apache.http.impl.client.CloseableHttpClient;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.form.model.*;
 import org.joget.commons.util.LogUtil;
@@ -27,44 +29,43 @@ public class RestFormElementBinder extends FormBinder implements FormLoadElement
     /**
      * Load from REST API
      *
-     * @param element Element
+     * @param element    Element
      * @param primaryKey String
-     * @param formData FormData
+     * @param formData   FormData
      * @return FormRowSet
      */
     @Override
     public FormRowSet load(Element element, String primaryKey, FormData formData) {
         ApplicationContext appContext = AppUtil.getApplicationContext();
-        WorkflowManager workflowManager = (WorkflowManager)appContext.getBean("workflowManager");
+        WorkflowManager workflowManager = (WorkflowManager) appContext.getBean("workflowManager");
         WorkflowAssignment workflowAssignment = workflowManager.getAssignment(formData.getActivityId());
 
-        if(isEmpty(primaryKey)) {
+        if (isEmpty(primaryKey)) {
             LogUtil.warn(getClassName(), "Primary Key is not provided");
         }
 
         LogUtil.info(getClassName(), "load : primaryKey [" + primaryKey + "]");
 
-        try {
+        try (CloseableHttpClient client = getHttpClient(isIgnoreCertificateError())) {
             String url = getPropertyUrl(workflowAssignment)
                     .replaceAll("\\$\\{id}", ifEmptyThen(primaryKey, ""));
 
-            LogUtil.info(getClassName(), "load : url ["+url+"]");
+            LogUtil.info(getClassName(), "load : url [" + url + "]");
 
-            final HttpClient client = getHttpClient(isIgnoreCertificateError());
             final Map<String, String> headers = Arrays.stream((Object[]) getProperty("headers"))
-                    .map(o -> (Map<String, Object>)o)
-                    .peek(m -> LogUtil.info(getClassName(), "load : map [" + m.entrySet().stream().map(e -> e.getKey() +"->" + e.getValue()).collect(Collectors.joining(";")) + "]"))
+                    .map(o -> (Map<String, Object>) o)
+                    .peek(m -> LogUtil.info(getClassName(), "load : map [" + m.entrySet().stream().map(e -> e.getKey() + "->" + e.getValue()).collect(Collectors.joining(";")) + "]"))
                     .collect(Collectors.toMap(m -> String.valueOf(m.getOrDefault("key", "")), m -> String.valueOf(m.getOrDefault("value", ""))));
             final HttpUriRequest request = getHttpRequest(url, getPropertyMethod(), headers, null);
             final HttpResponse response = client.execute(request);
             final int statusCode = getResponseStatus(response);
             if (getStatusGroupCode(statusCode) != 200) {
                 throw new RestClientException("Response code [" + statusCode + "] is not 200 (Success)");
-            } else if(statusCode != 200) {
+            } else if (statusCode != 200) {
                 LogUtil.warn(getClassName(), "Response code [" + statusCode + "] is considered as success");
             }
             Object[] mappingObj = (Object[]) getProperty("responseMapping");
-            
+
             return handleResponse(response, mappingObj);
         } catch (IOException | RestClientException e) {
             LogUtil.error(getClassName(), e, e.getMessage());
@@ -76,8 +77,8 @@ public class RestFormElementBinder extends FormBinder implements FormLoadElement
     /**
      * Store to REST API
      *
-     * @param element Element
-     * @param rowSet FormRowSet
+     * @param element  Element
+     * @param rowSet   FormRowSet
      * @param formData FormData
      * @return FormRowSet
      */
@@ -90,13 +91,16 @@ public class RestFormElementBinder extends FormBinder implements FormLoadElement
         String url = getPropertyUrl(workflowAssignment)
                 .replaceAll("\\$\\{}", ifEmptyThen(formData.getPrimaryKeyValue(), ""));
 
-        try {
+        try(CloseableHttpClient client = getHttpClient(isIgnoreCertificateError())) {
+
             Map<String, String> variables = generateVariables(rowSet);
-            final HttpClient client = getHttpClient(isIgnoreCertificateError());
             final HttpEntity httpEntity = getRequestEntity(workflowAssignment, variables);
             final HttpUriRequest request = getHttpRequest(workflowAssignment, url, getPropertyMethod(), getPropertyHeaders(workflowAssignment), httpEntity, variables);
-            final HttpResponse response = client.execute(request);
-            return ifNullThen(handleResponse(response, null), rowSet);
+
+            try(CloseableHttpResponse response = client.execute(request)) {
+                return ifNullThen(handleResponse(response, null), rowSet);
+            }
+
         } catch (RestClientException | IOException e) {
             LogUtil.error(getClassName(), e, e.getMessage());
         }
