@@ -89,6 +89,7 @@ public class RestTool extends DefaultApplicationPlugin implements RestMixin, Unc
 			final HttpUriRequest request = getHttpRequest(workflowAssignment, url, getPropertyMethod(), getPropertyHeaders(workflowAssignment), httpEntity, null);
 
             try(CloseableHttpResponse response = client.execute(request)) {
+
                 final HttpEntity entity = response.getEntity();
                 if (entity == null) {
                     throw new RestClientException("NULL response");

@@ -7,8 +7,7 @@ import com.kinnara.kecakplugins.rest.commons.RestMixin;
 import com.kinnara.kecakplugins.rest.commons.Unclutter;
 import com.kinnara.kecakplugins.rest.exceptions.RestClientException;
 import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.joget.apps.app.service.AppUtil;
@@ -58,7 +57,7 @@ public class DataListRestTool extends DefaultApplicationPlugin implements RestMi
         WorkflowManager workflowManager = (WorkflowManager) pluginManager.getBean("workflowManager");
         WorkflowAssignment workflowAssignment = (WorkflowAssignment) properties.get("workflowAssignment");
 
-        try(CloseableHttpClient client = getHttpClient(isIgnoreCertificateError())) {
+        try (CloseableHttpClient client = getHttpClient(isIgnoreCertificateError())) {
 
             DataList dataList = generateDataList(getPropertyString("dataListId"), workflowAssignment);
             Map<String, List<String>> filters = getPropertyDataListFilter(this, workflowAssignment);
@@ -70,7 +69,7 @@ public class DataListRestTool extends DefaultApplicationPlugin implements RestMi
             final String url = getPropertyUrl(workflowAssignment);
 
             long processingRows = rows.size();
-            if(isDebug()) {
+            if (isDebug()) {
                 LogUtil.info(getClassName(), "Processing [" + processingRows + "] rows");
             }
 
@@ -86,99 +85,101 @@ public class DataListRestTool extends DefaultApplicationPlugin implements RestMi
 
                         final HttpEntity httpEntity = getRequestEntity(workflowAssignment, m);
                         final HttpUriRequest request = getHttpRequest(workflowAssignment, url, getPropertyMethod(), getPropertyHeaders(workflowAssignment), httpEntity, m);
-                        final HttpResponse response = client.execute(request);
 
-                        HttpEntity entity = response.getEntity();
-                        if (entity == null) {
-                            throw new RestClientException("Empty response");
+                        try (CloseableHttpResponse response = client.execute(request)) {
+
+                            HttpEntity entity = response.getEntity();
+                            if (entity == null) {
+                                throw new RestClientException("Empty response");
+                            }
+
+                            final String responseContentType = getResponseContentType(response);
+
+                            try (BufferedReader br = new BufferedReader(new InputStreamReader(response.getEntity().getContent()))) {
+                                String responseBody = br.lines().collect(Collectors.joining());
+
+                                if (isDebug()) {
+                                    LogUtil.info(getClassName(), "Response Content-Type [" + responseContentType + "] body [" + responseBody + "]");
+                                }
+
+                                final int statusCode = getResponseStatus(response);
+                                if (getStatusGroupCode(statusCode) != 200) {
+                                    throw new RestClientException("Response code [" + statusCode + "] is not 200 (Success)");
+                                } else if (statusCode != 200) {
+                                    LogUtil.warn(getClassName(), "Response code [" + statusCode + "] is considered as success");
+                                }
+
+                                if (!isJsonResponse(response)) {
+                                    throw new RestClientException("Content-Type : [" + responseContentType + "] not supported");
+                                }
+
+                                final JsonElement completeElement;
+                                try {
+                                    JsonParser parser = new JsonParser();
+                                    completeElement = parser.parse(responseBody);
+                                } catch (JsonSyntaxException ex) {
+                                    throw new RestClientException(ex);
+                                }
+
+                                // Handle success status
+                                String successStatusPath = getSuccessStatusPath();
+                                if (!successStatusPath.isEmpty()) {
+                                    String successStatusValue = getSuccessStatusValue(workflowAssignment);
+                                    String responseSuccessStatusValue = getJsonResultVariableValue(successStatusPath, completeElement).orElse("");
+                                    if (!responseSuccessStatusValue.equals(successStatusValue)) {
+                                        fails = true;
+                                        LogUtil.warn(getClassName(), "Response path [" + successStatusPath + "] with value [" + responseSuccessStatusValue + "] is not indicated as success [" + successStatusValue + "]");
+                                    }
+                                }
+
+                                // Handle failed status
+                                String failedStatusPath = getFailedStatusPath();
+                                if (!failedStatusPath.isEmpty()) {
+                                    String failedStatusValue = getFailedStatusValue(workflowAssignment);
+                                    String responseFailedStatusValue = getJsonResultVariableValue(failedStatusPath, completeElement).orElse("");
+                                    if (responseFailedStatusValue.equals(failedStatusValue)) {
+                                        fails = true;
+                                        LogUtil.warn(getClassName(), "Response path [" + successStatusPath + "] with value [" + responseFailedStatusValue + "] is indicated as failed [" + failedStatusValue + "]");
+                                    }
+                                }
+
+                                // Form Binding
+                                String formDefId = getPropertyString("formDefId");
+                                if (!formDefId.isEmpty()) {
+                                    Form form = generateForm(formDefId);
+
+                                    String recordPath = getPropertyString("jsonRecordPath");
+                                    Object[] fieldMapping = (Object[]) getProperty("fieldMapping");
+
+                                    Pattern recordPattern = Pattern.compile(recordPath.replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
+                                    final Map<String, Pattern> fieldPattern = new HashMap<>();
+                                    for (Object o : fieldMapping) {
+                                        Map<String, String> mapping = (Map<String, String>) o;
+                                        String regexPattern = mapping.get("jsonPath").replaceAll("\\.", "\\.") + "$";
+                                        Pattern pattern = Pattern.compile(regexPattern, Pattern.CASE_INSENSITIVE);
+                                        fieldPattern.put(mapping.get("formField"), pattern);
+                                    }
+
+                                    FormRowSet result = new FormRowSet();
+                                    parseJson("", completeElement, recordPattern, fieldPattern, true, result, null, primaryKeyField, primaryKeyValue);
+
+                                    // save data to form
+                                    result.stream()
+                                            .findFirst()
+                                            .ifPresent(row -> {
+                                                FormData formData = new FormData();
+                                                formData.setPrimaryKeyValue(row.getId());
+
+                                                if (workflowAssignment != null) {
+                                                    formData.setActivityId(workflowAssignment.getActivityId());
+                                                    formData.setProcessId(workflowAssignment.getProcessId());
+                                                }
+
+                                                form.getStoreBinder().store(form, result, formData);
+                                            });
+                                } // if
+                            } // try
                         }
-
-                        final String responseContentType = getResponseContentType(response);
-
-                        try (BufferedReader br = new BufferedReader(new InputStreamReader(response.getEntity().getContent()))) {
-                            String responseBody = br.lines().collect(Collectors.joining());
-
-                            if (isDebug()) {
-                                LogUtil.info(getClassName(), "Response Content-Type [" + responseContentType + "] body [" + responseBody + "]");
-                            }
-
-                            final int statusCode = getResponseStatus(response);
-                            if (getStatusGroupCode(statusCode) != 200) {
-                                throw new RestClientException("Response code [" + statusCode + "] is not 200 (Success)");
-                            } else if(statusCode != 200) {
-                                LogUtil.warn(getClassName(), "Response code [" + statusCode + "] is considered as success");
-                            }
-
-                            if (!isJsonResponse(response)) {
-                                throw new RestClientException("Content-Type : [" + responseContentType + "] not supported");
-                            }
-
-                            final JsonElement completeElement;
-                            try {
-                                JsonParser parser = new JsonParser();
-                                completeElement = parser.parse(responseBody);
-                            } catch (JsonSyntaxException ex) {
-                                throw new RestClientException(ex);
-                            }
-
-                            // Handle success status
-                            String successStatusPath = getSuccessStatusPath();
-                            if(!successStatusPath.isEmpty()) {
-                                String successStatusValue = getSuccessStatusValue(workflowAssignment);
-                                String responseSuccessStatusValue = getJsonResultVariableValue(successStatusPath, completeElement).orElse("");
-                                if(!responseSuccessStatusValue.equals(successStatusValue)) {
-                                    fails = true;
-                                    LogUtil.warn(getClassName(), "Response path [" + successStatusPath + "] with value [" + responseSuccessStatusValue + "] is not indicated as success ["+successStatusValue+"]");
-                                }
-                            }
-
-                            // Handle failed status
-                            String failedStatusPath = getFailedStatusPath();
-                            if(!failedStatusPath.isEmpty()) {
-                                String failedStatusValue = getFailedStatusValue(workflowAssignment);
-                                String responseFailedStatusValue = getJsonResultVariableValue(failedStatusPath, completeElement).orElse("");
-                                if(responseFailedStatusValue.equals(failedStatusValue)) {
-                                    fails = true;
-                                    LogUtil.warn(getClassName(), "Response path [" + successStatusPath + "] with value [" + responseFailedStatusValue + "] is indicated as failed [" + failedStatusValue + "]");
-                                }
-                            }
-
-                            // Form Binding
-                            String formDefId = getPropertyString("formDefId");
-                            if (!formDefId.isEmpty()) {
-                                Form form = generateForm(formDefId);
-
-                                String recordPath = getPropertyString("jsonRecordPath");
-                                Object[] fieldMapping = (Object[]) getProperty("fieldMapping");
-
-                                Pattern recordPattern = Pattern.compile(recordPath.replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
-                                final Map<String, Pattern> fieldPattern = new HashMap<>();
-                                for (Object o : fieldMapping) {
-                                    Map<String, String> mapping = (Map<String, String>) o;
-                                    String regexPattern = mapping.get("jsonPath").replaceAll("\\.", "\\.") + "$";
-                                    Pattern pattern = Pattern.compile(regexPattern, Pattern.CASE_INSENSITIVE);
-                                    fieldPattern.put(mapping.get("formField"), pattern);
-                                }
-
-                                FormRowSet result = new FormRowSet();
-                                parseJson("", completeElement, recordPattern, fieldPattern, true, result, null, primaryKeyField, primaryKeyValue);
-
-                                // save data to form
-                                result.stream()
-                                        .findFirst()
-                                        .ifPresent(row -> {
-                                            FormData formData = new FormData();
-                                            formData.setPrimaryKeyValue(row.getId());
-
-                                            if(workflowAssignment != null) {
-                                                formData.setActivityId(workflowAssignment.getActivityId());
-                                                formData.setProcessId(workflowAssignment.getProcessId());
-                                            }
-
-                                            form.getStoreBinder().store(form, result, formData);
-                                        });
-                            } // if
-                        } // try
 
                         return !fails; // success
 
@@ -193,20 +194,20 @@ public class DataListRestTool extends DefaultApplicationPlugin implements RestMi
             }
 
             String statusVariable = getStatusVariable();
-            if(!statusVariable.isEmpty() && workflowAssignment != null) {
+            if (!statusVariable.isEmpty() && workflowAssignment != null) {
                 String statusValue;
-                if(processingRows == 0) {
+                if (processingRows == 0) {
                     statusValue = getValueNoData(workflowAssignment);
-                } else if(processedRows == 0) {
+                } else if (processedRows == 0) {
                     statusValue = getValueNoneSuccess(workflowAssignment);
-                } else if(processingRows == processedRows) {
+                } else if (processingRows == processedRows) {
                     statusValue = getValueFullSuccess(workflowAssignment);
                 } else {
                     statusValue = getValuePartialSuccess(workflowAssignment);
                 }
 
-                if(isDebug()) {
-                    LogUtil.info(getClassName(), "Setting status variable ["+statusVariable+"] with value ["+statusValue+"]");
+                if (isDebug()) {
+                    LogUtil.info(getClassName(), "Setting status variable [" + statusVariable + "] with value [" + statusValue + "]");
                 }
 
                 workflowManager.processVariable(workflowAssignment.getProcessId(), statusVariable, statusValue);
