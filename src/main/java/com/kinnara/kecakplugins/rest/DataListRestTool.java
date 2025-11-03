@@ -1,4 +1,4 @@
-package com.kinnara.kecakplugins.rest.process;
+package com.kinnara.kecakplugins.rest;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
@@ -228,7 +228,7 @@ public class DataListRestTool extends DefaultApplicationPlugin implements RestMi
 
     @Override
     public String getPropertyOptions() {
-        return AppUtil.readPluginResource(getClassName(), "/properties/process/DataListRestTool.json", null, true, "/messages/Rest");
+        return AppUtil.readPluginResource(getClassName(), "/properties/DataListRestTool.json", null, true, "/messages/Rest");
     }
 
     protected String getStatusVariable() {

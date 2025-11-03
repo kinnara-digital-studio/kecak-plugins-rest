@@ -1,4 +1,4 @@
-package com.kinnara.kecakplugins.rest.form;
+package com.kinnara.kecakplugins.rest;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
@@ -68,7 +68,7 @@ public class RestOptionsBinder extends FormBinder implements FormLoadOptionsBind
     }
 
     public String getPropertyOptions() {
-        return AppUtil.readPluginResource(getClassName(), "/properties/form/RestOptionBinder.json", null, false, "messages/Rest");
+        return AppUtil.readPluginResource(getClassName(), "/properties/RestOptionBinder.json", null, false, "messages/Rest");
     }
 
     @Override

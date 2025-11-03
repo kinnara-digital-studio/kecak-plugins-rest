@@ -1,4 +1,4 @@
-package com.kinnara.kecakplugins.rest.form;
+package com.kinnara.kecakplugins.rest;
 
 import com.kinnara.kecakplugins.rest.commons.RestMixin;
 import com.kinnara.kecakplugins.rest.exceptions.RestClientException;
@@ -58,7 +58,7 @@ public class RestLoadBinder extends FormBinder implements FormLoadElementBinder,
         String appVersion = appDef.getVersion().toString();
         Object[] arguments = new Object[]{appId, appVersion, appId, appVersion, appId, appVersion};
         String json;
-        json = AppUtil.readPluginResource(this.getClass().getName(), "/properties/form/RestLoadBinder.json", arguments, true, "messages/Rest");
+        json = AppUtil.readPluginResource(this.getClass().getName(), "/properties/RestLoadBinder.json", arguments, true, "messages/Rest");
         return json;
     }
 

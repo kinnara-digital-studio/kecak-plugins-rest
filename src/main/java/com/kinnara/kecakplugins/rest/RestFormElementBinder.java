@@ -1,4 +1,4 @@
-package com.kinnara.kecakplugins.rest.form;
+package com.kinnara.kecakplugins.rest;
 
 import com.kinnara.kecakplugins.rest.commons.RestMixin;
 import com.kinnara.kecakplugins.rest.exceptions.RestClientException;
@@ -134,6 +134,6 @@ public class RestFormElementBinder extends FormBinder implements FormLoadElement
 
     @Override
     public String getPropertyOptions() {
-        return AppUtil.readPluginResource(getClassName(), "/properties/form/RestFormElementBinder.json", null, true, "/messages/Rest");
+        return AppUtil.readPluginResource(getClassName(), "/properties/RestFormElementBinder.json", null, true, "/messages/Rest");
     }
 }
