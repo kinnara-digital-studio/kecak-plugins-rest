@@ -7,9 +7,9 @@ import com.kinnara.kecakplugins.rest.commons.RestMixin;
 import com.kinnara.kecakplugins.rest.commons.Unclutter;
 import com.kinnara.kecakplugins.rest.exceptions.RestClientException;
 import org.apache.http.HttpEntity;
-import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpUriRequest;
-import org.apache.http.impl.client.CloseableHttpClient;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.datalist.model.*;
 import org.joget.apps.form.model.Form;
@@ -64,9 +64,9 @@ public class RestDataListAction extends DataListActionDefault implements RestMix
 
         final String primaryKeyField = dataList.getBinder().getPrimaryKeyColumnName();
 
-        try(CloseableHttpClient client = getHttpClient(isIgnoreCertificateError())) {
-
+        try {
             final String url = getPropertyUrl();
+            final HttpClient client = getHttpClient(isIgnoreCertificateError());
 
             DataListCollection<Map<String, Object>> rows = Optional.of(dataList)
                     .map(DataList::getRows)
@@ -86,70 +86,68 @@ public class RestDataListAction extends DataListActionDefault implements RestMix
 
                             final HttpEntity httpEntity = getRequestEntity(null, m);
                             final HttpUriRequest request = getHttpRequest(null, url, getPropertyMethod(), getPropertyHeaders(), httpEntity, m);
+                            final HttpResponse response = client.execute(request);
 
-                            try(CloseableHttpResponse response = client.execute(request)) {
+                            HttpEntity entity = response.getEntity();
+                            if (entity == null) {
+                                throw new RestClientException("Empty response");
+                            }
 
-                                HttpEntity entity = response.getEntity();
-                                if (entity == null) {
-                                    throw new RestClientException("Empty response");
+                            final int statusCode = getResponseStatus(response);
+                            if (getStatusGroupCode(statusCode) != 200) {
+                                throw new RestClientException("Response code [" + statusCode + "] is not 200 (Success)");
+                            }
+
+                            final String responseContentType = getResponseContentType(response);
+
+                            try (BufferedReader br = new BufferedReader(new InputStreamReader(response.getEntity().getContent()))) {
+                                String responseBody = br.lines().collect(Collectors.joining());
+
+                                if (isDebug()) {
+                                    LogUtil.info(getClassName(), "Response Content-Type [" + responseContentType + "] body [" + responseBody + "]");
                                 }
 
-                                final int statusCode = getResponseStatus(response);
-                                if (getStatusGroupCode(statusCode) != 200) {
-                                    throw new RestClientException("Response code [" + statusCode + "] is not 200 (Success)");
+                                if (!isJsonResponse(response)) {
+                                    throw new RestClientException("Content-Type : [" + responseContentType + "] not supported");
                                 }
 
-                                final String responseContentType = getResponseContentType(response);
+                                final JsonElement completeElement;
+                                try {
+                                    JsonParser parser = new JsonParser();
+                                    completeElement = parser.parse(responseBody);
+                                } catch (JsonSyntaxException ex) {
+                                    throw new RestClientException(ex);
+                                }
 
-                                try (BufferedReader br = new BufferedReader(new InputStreamReader(response.getEntity().getContent()))) {
-                                    String responseBody = br.lines().collect(Collectors.joining());
+                                // Form Binding
+                                String formDefId = getPropertyString("formDefId");
+                                if(!formDefId.isEmpty()) {
+                                    Form form = generateForm(formDefId);
+
+                                    String recordPath = getPropertyString("jsonRecordPath");
+                                    Object[] fieldMapping = (Object[]) getProperty("fieldMapping");
+
+                                    Pattern recordPattern = Pattern.compile(recordPath.replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
+                                    Map<String, Pattern> fieldPattern = new HashMap<>();
+                                    for (Object o : fieldMapping) {
+                                        Map<String, String> mapping = (Map<String, String>) o;
+                                        Pattern pattern = Pattern.compile(mapping.get("jsonPath").replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
+                                        fieldPattern.put(mapping.get("formField"), pattern);
+                                    }
+
+                                    FormRowSet rowSet = new FormRowSet();
+                                    boolean isLookingForRecordPattern = true;
+                                    parseJson("", completeElement, recordPattern, fieldPattern, isLookingForRecordPattern, rowSet, null, primaryKeyField, primaryKeyValue);
 
                                     if (isDebug()) {
-                                        LogUtil.info(getClassName(), "Response Content-Type [" + responseContentType + "] body [" + responseBody + "]");
+                                        rowSet.stream()
+                                                .peek(r -> LogUtil.info(getClassName(), "-------Row Set-------"))
+                                                .flatMap(r -> r.entrySet().stream())
+                                                .forEach(e -> LogUtil.info(getClassName(), "key [" + e.getKey() + "] value [" + e.getValue() + "]"));
                                     }
 
-                                    if (!isJsonResponse(response)) {
-                                        throw new RestClientException("Content-Type : [" + responseContentType + "] not supported");
-                                    }
-
-                                    final JsonElement completeElement;
-                                    try {
-                                        JsonParser parser = new JsonParser();
-                                        completeElement = parser.parse(responseBody);
-                                    } catch (JsonSyntaxException ex) {
-                                        throw new RestClientException(ex);
-                                    }
-
-                                    // Form Binding
-                                    String formDefId = getPropertyString("formDefId");
-                                    if (!formDefId.isEmpty()) {
-                                        Form form = generateForm(formDefId);
-
-                                        String recordPath = getPropertyString("jsonRecordPath");
-                                        Object[] fieldMapping = (Object[]) getProperty("fieldMapping");
-
-                                        Pattern recordPattern = Pattern.compile(recordPath.replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
-                                        Map<String, Pattern> fieldPattern = new HashMap<>();
-                                        for (Object o : fieldMapping) {
-                                            Map<String, String> mapping = (Map<String, String>) o;
-                                            Pattern pattern = Pattern.compile(mapping.get("jsonPath").replaceAll("\\.", "\\.") + "$", Pattern.CASE_INSENSITIVE);
-                                            fieldPattern.put(mapping.get("formField"), pattern);
-                                        }
-
-                                        FormRowSet rowSet = new FormRowSet();
-                                        boolean isLookingForRecordPattern = true;
-                                        parseJson("", completeElement, recordPattern, fieldPattern, isLookingForRecordPattern, rowSet, null, primaryKeyField, primaryKeyValue);
-
-                                        if (isDebug()) {
-                                            rowSet.stream()
-                                                    .peek(r -> LogUtil.info(getClassName(), "-------Row Set-------"))
-                                                    .flatMap(r -> r.entrySet().stream())
-                                                    .forEach(e -> LogUtil.info(getClassName(), "key [" + e.getKey() + "] value [" + e.getValue() + "]"));
-                                        }
-
-                                        // save data to form
-                                        form.getStoreBinder().store(form, rowSet, new FormData());
-                                    }
+                                    // save data to form
+                                    form.getStoreBinder().store(form, rowSet, new FormData());
                                 }
                             }
                         } catch (JsonSyntaxException | RestClientException | IOException e) {
@@ -159,7 +157,7 @@ public class RestDataListAction extends DataListActionDefault implements RestMix
                         }
                     });
 
-        } catch (RestClientException | IOException e) {
+        } catch (RestClientException e) {
             LogUtil.error(getClassName(), e, e.getMessage());
         }
 

@@ -16,7 +16,6 @@ import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.entity.mime.MultipartEntityBuilder;
-import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.ssl.SSLContextBuilder;
@@ -357,7 +356,7 @@ public interface RestMixin extends PropertyEditable, Unclutter {
      * @return
      * @throws RestClientException
      */
-    default CloseableHttpClient getHttpClient(boolean ignoreCertificate) throws RestClientException {
+    default HttpClient getHttpClient(boolean ignoreCertificate) throws RestClientException {
         try {
             if (ignoreCertificate) {
                 SSLContext sslContext = new SSLContextBuilder()
