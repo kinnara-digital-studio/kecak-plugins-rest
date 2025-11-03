@@ -5,7 +5,9 @@ import com.kinnara.kecakplugins.rest.exceptions.RestClientException;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpUriRequest;
+import org.apache.http.impl.client.CloseableHttpClient;
 import org.joget.apps.app.model.AppDefinition;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.form.model.*;
@@ -80,16 +82,18 @@ public class RestLoadBinder extends FormBinder implements FormLoadElementBinder,
 			LogUtil.warn(getClassName(), "Primary Key is not provided");
 		}
 
-		try {
-			String url = getPropertyUrl(workflowAssignment)
-					.replaceAll(":id", ifEmptyThen(primaryKey, ""));
+		try(CloseableHttpClient client = getHttpClient(isIgnoreCertificateError())) {
 
+            final String url = getPropertyUrl(workflowAssignment)
+					.replaceAll(":id", ifEmptyThen(primaryKey, ""));
 			final Map<String, String> variables = Collections.singletonMap("id", primaryKey);
-			final HttpClient client = getHttpClient(isIgnoreCertificateError());
 			final HttpEntity httpEntity = getRequestEntity(workflowAssignment, variables);
 			final HttpUriRequest request = getHttpRequest(workflowAssignment, url, getPropertyMethod(), getPropertyHeaders(workflowAssignment), httpEntity, variables);
-			final HttpResponse response = client.execute(request);
-			return handleResponse(response, null);
+
+            try(CloseableHttpResponse response = client.execute(request)) {
+                return handleResponse(response, null);
+            }
+
 		} catch (IOException | RestClientException e) {
 			LogUtil.error(getClassName(), e, e.getMessage());
 		}

@@ -10,6 +10,7 @@ import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpUriRequest;
+import org.apache.http.impl.client.CloseableHttpClient;
 import org.joget.apps.app.service.AppUtil;
 import org.joget.apps.datalist.model.DataList;
 import org.joget.apps.datalist.model.DataListCollection;
@@ -23,6 +24,7 @@ import org.joget.workflow.model.WorkflowAssignment;
 import org.joget.workflow.model.service.WorkflowManager;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.*;
 import java.util.regex.Pattern;
@@ -56,7 +58,8 @@ public class DataListRestTool extends DefaultApplicationPlugin implements RestMi
         WorkflowManager workflowManager = (WorkflowManager) pluginManager.getBean("workflowManager");
         WorkflowAssignment workflowAssignment = (WorkflowAssignment) properties.get("workflowAssignment");
 
-        try {
+        try(CloseableHttpClient client = getHttpClient(isIgnoreCertificateError())) {
+
             DataList dataList = generateDataList(getPropertyString("dataListId"), workflowAssignment);
             Map<String, List<String>> filters = getPropertyDataListFilter(this, workflowAssignment);
             getCollectFilters(dataList, filters);
@@ -65,7 +68,6 @@ public class DataListRestTool extends DefaultApplicationPlugin implements RestMi
                     .orElseGet(DataListCollection::new);
 
             final String url = getPropertyUrl(workflowAssignment);
-            final HttpClient client = getHttpClient(isIgnoreCertificateError());
 
             long processingRows = rows.size();
             if(isDebug()) {
@@ -210,7 +212,7 @@ public class DataListRestTool extends DefaultApplicationPlugin implements RestMi
                 workflowManager.processVariable(workflowAssignment.getProcessId(), statusVariable, statusValue);
             }
 
-        } catch (RestClientException e) {
+        } catch (RestClientException | IOException e) {
             LogUtil.error(getClassName(), e, e.getMessage());
         }
         return null;
