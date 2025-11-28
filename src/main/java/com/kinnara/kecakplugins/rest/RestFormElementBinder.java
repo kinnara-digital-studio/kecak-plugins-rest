@@ -3,8 +3,6 @@ package com.kinnara.kecakplugins.rest;
 import com.kinnara.kecakplugins.rest.commons.RestMixin;
 import com.kinnara.kecakplugins.rest.exceptions.RestClientException;
 import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -98,11 +96,13 @@ public class RestFormElementBinder extends FormBinder implements FormLoadElement
 
         try {
             Map<String, String> variables = generateVariables(rowSet);
-            final HttpClient client = getHttpClient(isIgnoreCertificateError());
             final HttpEntity httpEntity = getRequestEntity(workflowAssignment, variables);
             final HttpUriRequest request = getHttpRequest(workflowAssignment, url, getPropertyMethod(), getPropertyHeaders(workflowAssignment), httpEntity, variables);
-            final HttpResponse response = client.execute(request);
-            return ifNullThen(handleResponse(response, null), rowSet);
+
+            try(CloseableHttpClient client = getHttpClient(isIgnoreCertificateError());
+                CloseableHttpResponse response = client.execute(request)) {
+                return ifNullThen(handleResponse(response, null), rowSet);
+            }
         } catch (RestClientException | IOException e) {
             LogUtil.error(getClassName(), e, e.getMessage());
         }
