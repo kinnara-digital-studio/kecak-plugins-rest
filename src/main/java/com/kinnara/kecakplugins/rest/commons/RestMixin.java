@@ -659,7 +659,8 @@ public interface RestMixin extends PropertyEditable, Unclutter {
             LogUtil.info(getClass().getName(), "handleResponse : Status [" + statusCode + "] Content-Type [" + responseContentType + "]");
         }
 
-        if(statusCode != HttpServletResponse.SC_OK) {
+        int statusGroup = getStatusGroupCode(statusCode);
+        if(statusGroup != HttpServletResponse.SC_OK) {
             LogUtil.warn(getClassName(), "Response status [" + getResponseStatus(response) + "] message ["+ getResponseBody(response) +"]");
             return null;
         }

@@ -14,6 +14,7 @@ import org.joget.workflow.model.WorkflowAssignment;
 import org.joget.workflow.model.service.WorkflowManager;
 import org.springframework.context.ApplicationContext;
 
+import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Map;
@@ -60,9 +61,9 @@ public class RestFormElementBinder extends FormBinder implements FormLoadElement
             try(CloseableHttpResponse response = client.execute(request)) {
 
                 final int statusCode = getResponseStatus(response);
-                if (getStatusGroupCode(statusCode) != 200) {
+                if (getStatusGroupCode(statusCode) != HttpServletResponse.SC_OK) {
                     throw new RestClientException("Response code [" + statusCode + "] is not 200 (Success)");
-                } else if (statusCode != 200) {
+                } else if (statusCode != HttpServletResponse.SC_OK) {
                     LogUtil.warn(getClassName(), "Response code [" + statusCode + "] is considered as success");
                 }
                 Object[] mappingObj = (Object[]) getProperty("responseMapping");
